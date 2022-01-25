@@ -25,7 +25,6 @@ struct Map {
 	char input;
 };
 
-//aosidaoiwoe
 
 typedef vector<vector<vector<Location>>> Island;
 
