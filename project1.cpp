@@ -95,7 +95,7 @@ void Treasure_Hunt::get_options(int argc, char** argv){
                                 {"help", no_argument, nullptr, 'h'},
                                 {nullptr, 0, nullptr, '\0'}};
     
-    while ((option = getopt_long(argc, argv, "hc:f:o:vsp:", longOpts, &option_index)) != -1){
+    while ((option = getopt_long(argc, argv, "c:f:o:vsp:h", longOpts, &option_index)) != -1){
         switch(option){
 
             case 'c':{
