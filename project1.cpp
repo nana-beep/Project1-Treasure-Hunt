@@ -100,7 +100,7 @@ void Treasure_Hunt::get_options(int argc, char** argv){
 
             case 'c':{
                 std::string captain_input = optarg;
-                if(captain_input == "STACK" || captain_input == "QUEUE"){
+                if(captain_input == "QUEUE" || captain_input == "STACK"){
                     container_captain = captain_input;
                 }
                 else{
@@ -112,7 +112,7 @@ void Treasure_Hunt::get_options(int argc, char** argv){
 
             case 'f':{
                 std::string firstmate_input = optarg;
-                if(firstmate_input == "STACK" || firstmate_input == "QUEUE"){
+                if(firstmate_input == "QUEUE" || firstmate_input == "STACK"){
                     container_firstmate = firstmate_input;
                 }
                 else{
@@ -124,8 +124,26 @@ void Treasure_Hunt::get_options(int argc, char** argv){
 
             //hunt order
             case 'o':{
-                std::string huntorder_input = optarg;
+                //default is nesw   
+                std::string hunt_order_input = optarg;
+                if(hunt_order_input.size() != 4){
+                    std::cerr << "Invalid argument to --hunt-order" << std::endl;
+                    exit(1);
+                }
 
+                //another way?
+                for(int i = 0; i < 4; i++){
+                    if(hunt_order_input.at(i) == 'N' || hunt_order_input.at(i) == 'E' ||
+                       hunt_order_input.at(i) == 'S' || hunt_order_input.at(i) == 'W'){
+                           if(i == 3){
+                               hunt_order = hunt_order_input;
+                           }
+                       }
+                    else{
+                        std::cerr << "Invalid argument to --hunt-order" << std::endl;
+                        exit(1);
+                    }
+                }
                 break;
             }
 
@@ -188,7 +206,15 @@ void Treasure_Hunt::read_data(){
 
 //start the hunt
 void Treasure_Hunt::run(){
+    //when captain goes
+    if(policy == 'c'){
 
+    }
+
+    //when first mate goes
+    if(policy == 'f'){
+        
+    }
 }
 
 
