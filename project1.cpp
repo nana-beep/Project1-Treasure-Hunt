@@ -9,7 +9,18 @@
 #include "project1.h"
 
 //command line stuff
+int main(int arc, char *argv[]){
+    Map map;
+    Island island;
+    get_Options(arc, argv, map);
+    Map_init(island, map);
+    
+    
+}
 
+void get_Options(int argc, char *argv[], Map &map){
+
+}
 
 void Map_init(Island& island, Map& map) {
 

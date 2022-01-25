@@ -28,6 +28,9 @@ struct Map {
 
 typedef vector<vector<vector<Location>>> Island;
 
+//gets options for map
+void get_Options(int argc, char *argv[], Map &map);
+
 //initializes the map
 void Map_init(Island &island, Map &map);
 
@@ -36,6 +39,8 @@ void Map_make(Island& island, Map& map, char character);
 
 //checks if characters on map are valid
 void Valid_character(char character);
+
+
 
 
 
