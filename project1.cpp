@@ -1,10 +1,13 @@
+// PROJECT IDENTIFIER: 40FB54C86566B9DDEAB902CC80E8CE85C1C62AAD
+
 #include <vector>
 #include <iostream>
 #include <string>
 #include <getopt.h>
 #include <algorithm> // std::sort
+#include "hunt.h"
 
-//command line stuff
+
 class Treasure_Hunt {
     
 public:
@@ -26,6 +29,7 @@ private:
     bool verbose = false;
     bool stats = false;
     char policy = '\0';
+    std::vector<vector<vector<Location>>> Map;
 };
 
 
@@ -122,16 +126,27 @@ void Treasure_Hunt::get_options(int argc, char** argv){
                 break;
             }
 
-            //hunt order
+            //hunt order DOUBLE CHECK WHERE USED
             case 'o':{
-                //default is nesw   
                 std::string hunt_order_input = optarg;
+
+                //ensures that there are only four directions
                 if(hunt_order_input.size() != 4){
                     std::cerr << "Invalid argument to --hunt-order" << std::endl;
                     exit(1);
                 }
 
-                //another way?
+                //checks for any duplicates in the string
+                for(int i = 0; i < hunt_order_input.length(); i++){
+                    for(int j = i+1; j < hunt_order_input.length(); j++){
+                        if(hunt_order_input.at(i) == hunt_order_input.at(j)){
+                            std::cerr << "Invalid argument to --hunt-order" << std::endl;
+                            exit(1);
+                        }
+                    }
+                }
+
+                //sets up hunt order based on user input
                 for(int i = 0; i < 4; i++){
                     if(hunt_order_input.at(i) == 'N' || hunt_order_input.at(i) == 'E' ||
                        hunt_order_input.at(i) == 'S' || hunt_order_input.at(i) == 'W'){
@@ -144,9 +159,16 @@ void Treasure_Hunt::get_options(int argc, char** argv){
                         exit(1);
                     }
                 }
+
+                //set up default DOUBLE CHECK
+                if(hunt_order_input == ''){
+                    hunt_order = 'NESW';
+                }
+
                 break;
             }
 
+            //set up verbose, stats, and show path DOUBLE CHECK
             case 'v':{
                 verbose = true;
                 break;
@@ -157,8 +179,23 @@ void Treasure_Hunt::get_options(int argc, char** argv){
                 break;
             }
 
-            //show path
+            //show path, L or M.DOUBLE CHECK
             case 'p':{
+                std::string path_input = optarg;
+                //if it is shown multiple times, Specify --show-path only once
+
+
+                if(path_input == 'L'){
+
+                }
+                else if(path_input == 'M'){
+
+                }
+                else{
+                    std::cerr << "Unknown option" << std::endl;
+                        exit(1);
+                }
+
                 break;
             }
             
@@ -192,7 +229,7 @@ void Treasure_Hunt::get_options(int argc, char** argv){
         }
     }
 
-    //If one has not been selected, will default to captain
+    //If one has not been selected, will default to captain DOUBLE CHECK
 if (!policy){
     policy = 'c';
 }
@@ -201,19 +238,69 @@ if (!policy){
 
 //Read data into the program through stdin
 void Treasure_Hunt::read_data(){
+    Location loc;
+    int mapsize = 0;
 
+    std::cin >> mapsize >> std::ws;
+
+    Map.reserve(size_t(mapsize));
+
+    while(std::getline(std::cin, loc.symbol, '\n')){
+        //skip comments
+        if(loc.symbol[0] == '#'){
+            size_t pos = 0;
+
+             if ((pos = loc.symbol.find_last_of('\n')) != std::string::npos)
+				// Need a +1 here to move past the \n
+                loc.symbol = loc.symbol.substr(pos + 2);
+
+            // Otherwise just grab the rest of the line.
+            else {
+                std::getline(std::cin, loc.symbol);
+                continue;
+            }
+        }
+
+    // Get the rest of the line.
+        std::getline(std::cin, loc.format, '\n');
+        std::cin >> loc.mapsize >> std::ws;
+        
+        // Put the location into the map.
+        //put it where?
+        Map[loc.row][loc.col].push_back(loc);
+    }
+
+    // If we didn't read in any data, throw an error.
+    if (!Map.size())
+        throw std::runtime_error("No data was read in! Refer to the help option to see program usage.");
 }
 
 //start the hunt
 void Treasure_Hunt::run(){
-    //when captain goes
-    if(policy == 'c'){
+    //while treasure is not found
+    while(Location::symbol != '$'){
+        //find start location. if not found, state 'Map does not have a start location'
 
-    }
+        //when captain goes
+        if(policy == 'c'){
+        //based on hunt order, move through '.' only
 
-    //when first mate goes
-    if(policy == 'f'){
-        
+        //if 'o' is discovered, stops until firstmate is done with search
+        //if true, do not search again  
+        }
+
+        //when first mate goes
+        if(policy == 'f'){
+        //start on the 'o' captain stopped at
+        //based on hunt order, move through 'o' only
+
+        //if 'o' is discovered that spot ==true and firstmate does not search again
+        //keep going until all 'o' is discovered or treasure is found
+
+        //otherwise, stop and let captain travel again
+        }
+
+        //if '$' is not found, return 'Map does not have treasure'
     }
 }
 

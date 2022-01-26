@@ -1,4 +1,5 @@
 // https://github.com/dgarriga/ngscmd/tree/master/src
+// PROJECT IDENTIFIER: 40FB54C86566B9DDEAB902CC80E8CE85C1C62AAD
 
 #ifndef __GETOPT_H__
 /**
