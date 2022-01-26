@@ -14,8 +14,8 @@ struct Location{
     int row = 0;
     int col = 0;
     int mapsize = 0;
-    string format;
-    string symbol;
+    char format;
+    char symbol;
     Location *prev;
 
     // class Captain_Hunt{

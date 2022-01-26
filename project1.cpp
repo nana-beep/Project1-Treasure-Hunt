@@ -26,6 +26,7 @@ private:
     std::string container_captain = "STACK";
     std::string container_firstmate = "QUEUE";
     std::string hunt_order = "NESW";
+    std::string path;
     bool verbose = false;
     bool stats = false;
     char policy = '\0';
@@ -90,6 +91,8 @@ void Treasure_Hunt::get_options(int argc, char** argv){
     // Don't display getopt error messages about options
     opterr = false;
 
+    bool path_exist = false;
+
     struct option longOpts[] = {{"captain", required_argument, nullptr, 'c'},
                                 {"firstmate", required_argument, nullptr, 'f'},
                                 {"hunt-order", required_argument, nullptr, 'o'},
@@ -129,6 +132,7 @@ void Treasure_Hunt::get_options(int argc, char** argv){
             //hunt order DOUBLE CHECK WHERE USED
             case 'o':{
                 std::string hunt_order_input = optarg;
+                bool hunt_order_input_exist = false;
 
                 //ensures that there are only four directions
                 if(hunt_order_input.size() != 4){
@@ -146,12 +150,13 @@ void Treasure_Hunt::get_options(int argc, char** argv){
                     }
                 }
 
-                //sets up hunt order based on user input
+                //sets up hunt order based on input
                 for(int i = 0; i < 4; i++){
                     if(hunt_order_input.at(i) == 'N' || hunt_order_input.at(i) == 'E' ||
                        hunt_order_input.at(i) == 'S' || hunt_order_input.at(i) == 'W'){
                            if(i == 3){
                                hunt_order = hunt_order_input;
+                               hunt_order_input_exist = true;
                            }
                        }
                     else{
@@ -161,7 +166,7 @@ void Treasure_Hunt::get_options(int argc, char** argv){
                 }
 
                 //set up default DOUBLE CHECK
-                if(hunt_order_input == ''){
+                if(hunt_order_input_exist == false){
                     hunt_order = 'NESW';
                 }
 
@@ -182,24 +187,25 @@ void Treasure_Hunt::get_options(int argc, char** argv){
             //show path, L or M.DOUBLE CHECK
             case 'p':{
                 std::string path_input = optarg;
-                //if it is shown multiple times, Specify --show-path only once
-
-
-                if(path_input == 'L'){
-
+                //if it is shown none, Specify --show-path only once
+                if (path_exist) {
+                    cerr << "Specify --show-path only once" << endl;
+                    exit(1);
                 }
-                else if(path_input == 'M'){
 
+                //what to do if shown multiple times?
+
+
+                if(path_input == "L" || path_input == "M"){
+                    path = path_input;
                 }
                 else{
-                    std::cerr << "Unknown option" << std::endl;
+                    std::cerr << "Invalid argument to --show-path" << std::endl;
                         exit(1);
                 }
 
                 break;
             }
-            
-
 
             case 'h':{
                 std::cout <<  "This program reads a txt file in the format of a 2-D Ascii Map or a Coordinate/Terrain Triples \n"
@@ -228,11 +234,6 @@ void Treasure_Hunt::get_options(int argc, char** argv){
             }
         }
     }
-
-    //If one has not been selected, will default to captain DOUBLE CHECK
-if (!policy){
-    policy = 'c';
-}
 
 }
 
@@ -278,11 +279,19 @@ void Treasure_Hunt::read_data(){
 //start the hunt
 void Treasure_Hunt::run(){
     //while treasure is not found
-    while(Location::symbol != '$'){
+    while(/*THE TREASURE IS NOT FOUND*/){
+
         //find start location. if not found, state 'Map does not have a start location'
 
         //when captain goes
         if(policy == 'c'){
+            if(container_captain == "QUEUE"){
+
+            }
+
+            else if(container_captain == "STACK"){
+
+            }
         //based on hunt order, move through '.' only
 
         //if 'o' is discovered, stops until firstmate is done with search
@@ -291,6 +300,13 @@ void Treasure_Hunt::run(){
 
         //when first mate goes
         if(policy == 'f'){
+            if(container_firstmate == "QUEUE"){
+
+            }
+
+            else if(container_captain == "STACK"){
+                
+            }
         //start on the 'o' captain stopped at
         //based on hunt order, move through 'o' only
 
