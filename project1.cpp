@@ -1,83 +1,401 @@
-// PROJECT IDENTIFIER: 40FB54C86566B9DDEAB902CC80E8CE85C1C62AAD
+//  Project Identifier: 40FB54C86566B9DDEAB902CC80E8CE85C1C62AAD
 
 #include <vector>
+#include <algorithm>
+#include <getopt.h>
 #include <iostream>
 #include <string>
-#include <getopt.h>
-#include <algorithm> // std::sort
 #include "hunt.h"
-#include <stack>
-#include <queue>
+#include "xcode_redirect.hpp"
+#include <deque>
 using namespace std;
+ 
+// ----------------------------------------------------------------------------
+//                       Quarter Master Declarations
+// ----------------------------------------------------------------------------
 
-class Treasure_Hunt {
+class QuarterMaster {
     
 public:
     
-    // Read in the CSV music file through stdin.
+    // Members
+    // Optimization Tip: Make sure to order from biggest size to smallest
+    // 2-D Vector
+    vector<vector<location>> world_map;
+    
+    // DEFAULT
+    string container_cap = "STACK";
+    string container_first = "QUEUE";
+    string huntOrder = "NESW";
+    char map_or_list_format;
+    string path_type;
+    unsigned int n;
+    int land_traveled = 0;
+    int water_traveled = 0;
+    int ashore = 0;
+    bool verbose = false;
+    bool stats = false;
+    bool path = false;
+    
+    coordinate start;
+    coordinate end;
+    
+    // Read in the .txt treasure file through stdin.
     void read_data();
 
     // Read and process command line arguments.
     void get_options(int argc, char** argv);
     
-    //define search process
-    bool search(string search_goal, string container, Location loc);
-
-    void investigateforland(Location loc, string container);
-
-    // run the actual search
-    void run(string search_goal1, string search_goal2);
+    // Print Stats
+    void print_stats();
     
+    // Print Path
+    void print_path(string path_value);
     
-private:
-    std::string container_captain = "STACK";
-    std::string container_firstmate = "QUEUE";
+};
 
-    std::stack<Location> stacks;
-    std::queue<Location> queues;
+// ----------------------------------------------------------------------------
+//                          Crew Declarations
+// ----------------------------------------------------------------------------
 
-    std::string hunt_order = "NESW";
-    std::string path;
-    int mapsize = 0;
-    Location start_loc;
-    Location end_loc;
-    char symbol;
-    char start;
-    char policy = '\0';
-    bool verbose = false;
-    bool stats = false;
+struct Crew {
     
-    std::vector<vector<Location>> Map;
+public:
+    
+    string hunt_strat;
+    string container_type;
+    deque<coordinate> to_explore;
+    coordinate current;
+    
+    Crew(string hunt_idea, string storing) {
+        hunt_strat = hunt_idea;
+        container_type = storing;
+    }
+    
+    void search(bool &found, int &travel);
+    
 };
 
 
+// ----------------------------------------------------------------------------
+//                               Driver
+// ----------------------------------------------------------------------------
 
-int main(int argc, char** argv){
-    try{
-        Treasure_Hunt hunt;
-        Location loc;
-
-        hunt.get_options(argc, argv);
-
-        hunt.read_data();
-
-        hunt.search("land", "STACK",loc);
-
-        hunt.investigateforland(loc, "STACK");
-
-        hunt.run("land", "treasure");
+int main(int argc, char * argv[]) {
+    
+    // Xcode Redirect Speed up - I/O Stream
+    ios_base::sync_with_stdio(false);
+    xcode_redirect(argc, argv);
+    
+    // Ship is the person who will know everything and be able to provide you information
+    QuarterMaster ship;
+    
+    ship.get_options(argc, argv);
+    ship.read_data();
+    
+    // Create the Crew
+    Crew captain(ship.huntOrder, ship.container_cap);
+    Crew firstmate(ship.huntOrder, ship.container_first);
+    
+    bool treasure_found = false;
+    
+    // Captain "STACK" or "QUEUE"
+    switch (captain.container_type[0]) {
+        // STACK
+        case 'S': {
+            // Adding "START LOCATION" to 'to_explore' deque
+            captain.to_explore.push_front(ship.start);
+            ship.water_traveled = ship.water_traveled + 1;
+            
+            // Verbose "Treasure hunt started at: ..."
+            if (ship.verbose)
+                cout << "Treasure hunt started at: " << ship.start.row << ship.start.col << "/n";
+            
+            while(!captain.to_explore.empty() || !treasure_found) {
+                
+                // Set current location to top of stack
+                captain.current = captain.to_explore.front();
+                
+                // Check to see if it has not been discovered
+                if (!ship.world_map[captain.current.row][captain.current.col].discovered) {
+                    ship.world_map[captain.current.row][captain.current.col].discovered = true;
+                    ship.water_traveled = ship.water_traveled + 1;
+                }
+                
+                // Removing from sail container
+                captain.to_explore.pop_front();
+                
+                // Loop through Hunt Order
+                for(string::size_type i = 0; i < captain.hunt_strat.size(); ++i) {
+                    
+                    // North
+                    if (captain.hunt_strat[i] == 'N') {
+                        
+                        // 'out of bounds'
+                        if (captain.current.row == 0)
+                            continue;
+                        
+                        // '.'
+                        if (ship.world_map[captain.current.row - 1][captain.current.col].terrian == '.') {
+                            if (!ship.world_map[captain.current.row - 1][captain.current.col].discovered) {
+                                
+                                // Set previous
+                                if (captain.current.row - 1 != ship.start.row || captain.current.col != ship.start.col)
+                                        ship.world_map[captain.current.row - 1][captain.current.col].previos_step = 'W';
+                                
+                                coordinate temp;
+                                temp.row = captain.current.row - 1;
+                                temp.col = captain.current.col;
+                                captain.to_explore.push_front(temp);
+                            }
+                        }
+                        
+                        // 'o' || '$'
+                        if (ship.world_map[captain.current.row - 1][captain.current.col].terrian == 'o' ||
+                            ship.world_map[captain.current.row - 1][captain.current.col].terrian == '$') {
+                            if (!ship.world_map[captain.current.row - 1][captain.current.col].discovered) {
+                                
+                                // Went ashore
+                                ship.ashore = ship.ashore + 1;
+                                
+                                // Verbose "Went ashore at: ..."
+                                if (ship.verbose) {
+                                    cout << "Went ashore at: " << captain.current.row - 1 << "," << captain.current.col << "/n";
+                                    cout << "Searching island... ";
+                                }
+                                
+                                // Run first mate --- set previous in the search function
+                                firstmate.search(treasure_found,ship.land_traveled);
+                                
+                                // Check for treasure
+                                if (treasure_found)
+                                    break;
+                                
+                                // Verbose "party..."
+                                if (ship.verbose) {
+                                    if (treasure_found)
+                                        cout << "party found treasure at " << ship.end.row << ship.end.col << ".\n";
+                                    else
+                                        cout << "party returned with no treasure.\n";
+                                }
+                            }
+                        }
+                        
+                        // '#'
+                        if (ship.world_map[captain.current.row - 1][captain.current.col].terrian == '#') {
+                            continue;
+                        }
+                    }
+                    
+                    // East
+                    if (captain.hunt_strat[i] == 'E') {
+                        
+                        // 'out of bounds'
+                        if (captain.current.col == (ship.n - 1))
+                            continue;
+                        
+                        // '.'
+                        if (ship.world_map[captain.current.row][captain.current.col + 1].terrian == '.') {
+                            if (!ship.world_map[captain.current.row][captain.current.col + 1].discovered) {
+                                
+                                // Set previous
+                                if (captain.current.row != ship.start.row || captain.current.col + 1 != ship.start.col)
+                                        ship.world_map[captain.current.row][captain.current.col + 1].previos_step = 'E';
+                                
+                                coordinate temp;
+                                temp.row = captain.current.row;
+                                temp.col = captain.current.col + 1;
+                                captain.to_explore.push_front(temp);
+                            }
+                        }
+                        
+                        // 'o' || '$'
+                        if (ship.world_map[captain.current.row][captain.current.col + 1].terrian == 'o' ||
+                            ship.world_map[captain.current.row][captain.current.col + 1].terrian == '$') {
+                            if (!ship.world_map[captain.current.row][captain.current.col + 1].discovered) {
+                                
+                                // Went ashore
+                                ship.ashore = ship.ashore + 1;
+                                
+                                // Verbose "Went ashore at: ..."
+                                if (ship.verbose) {
+                                    cout << "Went ashore at: " << captain.current.row << "," << captain.current.col + 1 << "/n";
+                                    cout << "Searching island... ";
+                                }
+                                
+                                // Run first mate --- set previous in the search function
+                                firstmate.search(treasure_found,ship.land_traveled);
+                                
+                                // Check for treasure
+                                if (treasure_found)
+                                    break;
+                                
+                                // Verbose "party..."
+                                if (ship.verbose) {
+                                    if (treasure_found)
+                                        cout << "party found treasure at " << ship.end.row << ship.end.col << ".\n";
+                                    else
+                                        cout << "party returned with no treasure.\n";
+                                }
+                            }
+                        }
+                        
+                        // '#'
+                        if (ship.world_map[captain.current.row][captain.current.col + 1].terrian == '#') {
+                            continue;
+                        }
+                    }
+                    
+                    // South
+                    if (captain.hunt_strat[i] == 'S') {
+                        
+                        // 'out of bounds'
+                        if (captain.current.row == (ship.n - 1))
+                            continue;
+                        
+                        // '.'
+                        if (ship.world_map[captain.current.row + 1][captain.current.col].terrian == '.') {
+                            if (!ship.world_map[captain.current.row + 1][captain.current.col].discovered) {
+                                
+                                // Set previous
+                                if (captain.current.row + 1 != ship.start.row || captain.current.col != ship.start.col)
+                                        ship.world_map[captain.current.row + 1][captain.current.col].previos_step = 'S';
+                                
+                                coordinate temp;
+                                temp.row = captain.current.row + 1;
+                                temp.col = captain.current.col;
+                                captain.to_explore.push_front(temp);
+                            }
+                        }
+                        
+                        // 'o' || '$'
+                        if (ship.world_map[captain.current.row + 1][captain.current.col].terrian == 'o' ||
+                            ship.world_map[captain.current.row + 1][captain.current.col].terrian == '$') {
+                            if (!ship.world_map[captain.current.row + 1][captain.current.col].discovered) {
+                                
+                                // Went ashore
+                                ship.ashore = ship.ashore + 1;
+                                
+                                // Verbose "Went ashore at: ..."
+                                if (ship.verbose) {
+                                    cout << "Went ashore at: " << captain.current.row + 1 << "," << captain.current.col << "/n";
+                                    cout << "Searching island... ";
+                                }
+                                
+                                // Run first mate --- set previous in the search function
+                                firstmate.search(treasure_found,ship.land_traveled);
+                                
+                                // Check for treasure
+                                if (treasure_found)
+                                    break;
+                                
+                                // Verbose "party..."
+                                if (ship.verbose) {
+                                    if (treasure_found)
+                                        cout << "party found treasure at " << ship.end.row << ship.end.col << ".\n";
+                                    else
+                                        cout << "party returned with no treasure.\n";
+                                }
+                            }
+                        }
+                        
+                        // '#'
+                        if (ship.world_map[captain.current.row + 1][captain.current.col].terrian == '#') {
+                            continue;
+                        }
+                    }
+                    
+                    // West
+                    if (captain.hunt_strat[i] == 'W') {
+                        
+                        // 'out of bounds'
+                        if (captain.current.col == 0)
+                            continue;
+                        
+                        // '.'
+                        if (ship.world_map[captain.current.row][captain.current.col - 1].terrian == '.') {
+                            if (!ship.world_map[captain.current.row][captain.current.col - 1].discovered) {
+                                
+                                // Set previous
+                                if (captain.current.row != ship.start.row || captain.current.col - 1 != ship.start.col)
+                                        ship.world_map[captain.current.row][captain.current.col - 1].previos_step = 'W';
+                                
+                                coordinate temp;
+                                temp.row = captain.current.row;
+                                temp.col = captain.current.col - 1;
+                                captain.to_explore.push_front(temp);
+                            }
+                        }
+                        
+                        // 'o' || '$'
+                        if (ship.world_map[captain.current.row][captain.current.col - 1].terrian == 'o' ||
+                            ship.world_map[captain.current.row][captain.current.col - 1].terrian == '$') {
+                            if (!ship.world_map[captain.current.row][captain.current.col - 1].discovered) {
+                                
+                                // Went ashore
+                                ship.ashore = ship.ashore + 1;
+                                
+                                // Verbose "Went ashore at: ..."
+                                if (ship.verbose) {
+                                    cout << "Went ashore at: " << captain.current.row << "," << captain.current.col - 1 << "/n";
+                                    cout << "Searching island... ";
+                                }
+                                
+                                // Run first mate --- set previous in the search function
+                                firstmate.search(treasure_found,ship.land_traveled);
+                                
+                                // Check for treasure
+                                if (treasure_found)
+                                    break;
+                                
+                                // Verbose "party..."
+                                if (ship.verbose) {
+                                    if (treasure_found)
+                                        cout << "party found treasure at " << ship.end.row << ship.end.col << ".\n";
+                                    else
+                                        cout << "party returned with no treasure.\n";
+                                }
+                            }
+                        }
+                        
+                        // '#'
+                        if (ship.world_map[captain.current.row][captain.current.col - 1].terrian == '#') {
+                            continue;
+                        }
+                    }
+                }
+                
+                // Output
+                if (ship.stats)
+                    ship.print_stats();
+                if (ship.path)
+                    ship.print_path(ship.path_type);
+                
+                // Will need a path length later when doing "backtracing" have to find path back no matter what
+                if (treasure_found)
+                    cout << "Treasure found at " << ship.end.row <<","<< ship.end.col << " with path length " << 7 << ".\n";
+                else
+                    cout << "No treasure found after investigating " << ship.ashore << "locations.\n";
+            }
+            
+        }
+        
+        // QUEUE
+        case 'Q': {
+            
+        }
     }
-
-    catch(std::runtime_error& e){
-        std::cerr << e.what() << std::endl;
-        return 1;
-    }
-
+    
+    // insert code here...(Whole process of will be here)
     return 0;
 }
 
-/*
 
+// ----------------------------------------------------------------------------
+//                      Quarter Master Definitions
+// ----------------------------------------------------------------------------
+
+/*
     This program can be run with five different command line options:
  
     [--help | -h]
@@ -107,123 +425,39 @@ int main(int argc, char** argv){
  
  */
 
-void Treasure_Hunt::get_options(int argc, char** argv){
+void QuarterMaster::get_options(int argc, char** argv) {
     int option_index = 0, option = 0;
     
     // Don't display getopt error messages about options
     opterr = false;
-
-    bool path_exist = false;
-
-    struct option longOpts[] = {{"captain", required_argument, nullptr, 'c'},
-                                {"firstmate", required_argument, nullptr, 'f'},
-                                {"hunt-order", required_argument, nullptr, 'o'},
-                                {"verbose", no_argument, nullptr, 'v'},
-                                {"stats", no_argument, nullptr, 's'},
-                                {"show-path", required_argument, nullptr, 'p'},
-                                {"help", no_argument, nullptr, 'h'},
-                                {nullptr, 0, nullptr, '\0'}};
     
-    while ((option = getopt_long(argc, argv, "c:f:o:vsp:h", longOpts, &option_index)) != -1){
-        switch(option){
+    // Checking path flag
+    bool path_used = false;
 
-            case 'c':{
-                std::string captain_input = optarg;
-                if(captain_input == "QUEUE" || captain_input == "STACK"){
-                    container_captain = captain_input;
-                }
-                else{
-                    std::cerr << "Invalid argument to --captain" << std::endl;
-                    exit(1);
-                }
-                break;
-            }
-
-            case 'f':{
-                std::string firstmate_input = optarg;
-                if(firstmate_input == "QUEUE" || firstmate_input == "STACK"){
-                    container_firstmate = firstmate_input;
-                }
-                else{
-                    std::cerr << "Invalid argument to --firstmate" << std::endl;
-                    exit(1);
-                }
-                break;
-            }
-
-            //hunt order DOUBLE CHECK WHERE USED
-            case 'o':{
-                std::string hunt_order_input = optarg;
-
-                //ensures that there are only four directions
-                if(hunt_order_input.size() != 4){
-                    std::cerr << "Invalid argument to --hunt-order" << std::endl;
-                    exit(1);
-                }
-
-                //checks for any duplicates in the string
-                for(int i = 0; i < hunt_order_input.length(); i++){
-                    for(int j = i+1; j < hunt_order_input.length(); j++){
-                        if(hunt_order_input.at(i) == hunt_order_input.at(j)){
-                            std::cerr << "Invalid argument to --hunt-order" << std::endl;
-                            exit(1);
-                        }
-                    }
-                }
-
-                //sets up hunt order based on input
-                for(int i = 0; i < 4; i++){
-                    if(hunt_order_input.at(i) == 'N' || hunt_order_input.at(i) == 'E' ||
-                       hunt_order_input.at(i) == 'S' || hunt_order_input.at(i) == 'W'){
-                           if(i == 3){
-                               hunt_order = hunt_order_input;
-                           }
-                       }
-                    else{
-                        std::cerr << "Invalid argument to --hunt-order" << std::endl;
-                        exit(1);
-                    }
-                }
-
-                break;
-            }
-
-            //set up verbose, stats, and show path DOUBLE CHECK
-            case 'v':{
-                verbose = true;
-                break;
-            }
-
-            case 's':{
-                stats = true;
-                break;
-            }
-
-            //show path, L or M.DOUBLE CHECK
-            case 'p':{
-                std::string path_input = optarg;
-                //if it is shown none, Specify --show-path only once
-                if (path_exist) {
-                    cerr << "Specify --show-path only once" << endl;
-                    exit(1);
-                }
-
-                //what to do if shown multiple times?
-
-
-                if(path_input == "L" || path_input == "M"){
-                    path = path_input;
-                }
-                else{
-                    std::cerr << "Invalid argument to --show-path" << std::endl;
-                        exit(1);
-                }
-
-                break;
-            }
-
-            case 'h':{
-                std::cout <<  "This program reads a txt file in the format of a 2-D Ascii Map or a Coordinate/Terrain Triples \n"
+    // use getopt to find command line options
+    struct option longOpts[] = {{ "help", no_argument, nullptr, 'h'},
+                                { "captain", required_argument, nullptr, 'c'},
+                                { "firstmate", required_argument, nullptr, 'f'},
+                                { "hunt-order", required_argument, nullptr, 'o'},
+                                { "verbose", no_argument, nullptr, 'v'},
+                                { "stats", no_argument, nullptr, 's'},
+                                { "show-path", required_argument, nullptr, 'p'},
+                                { nullptr, 0, nullptr, '\0' }};
+    
+    while ((option = getopt_long(argc, argv, "hc:f:o:vsp:", longOpts, &option_index)) != -1) {
+        // Checking for show-path more than once
+        if (path_used) {
+            cerr << "Specify --show-path only once" << endl;
+            exit(1);
+        }
+            
+        if (option == 'p')
+            path_used = true;
+        
+        switch (option) {
+            // Help
+            case 'h': {
+                cout      <<  "This program reads a txt file in the format of a 2-D Ascii Map or a Coordinate/Terrain Triples \n"
                           <<  "Both files will contain the following structures: \n"
                           <<  "\t 1. Zero or more lines of comments, each of which...\n\t ~ have an octothorpe (#) in column zero \n"
                           <<                                                              "\t ~ can contain any combination of zero or more printable                                                                    ascii characters \n"
@@ -247,212 +481,173 @@ void Treasure_Hunt::get_options(int argc, char** argv){
                           <<                      "\t< <2D Ascii Map.txt or CTT.txt>\' \n";
                 exit(0);
             }
-        }
-    }
-
-}
-
-//Read data into the program through stdin
-void Treasure_Hunt::read_data(){
-    //ignore the lines that start with #
-    cin >> start;
-    
-    while(start == '#') {
-        cin.ignore(numeric_limits<streamsize>::max(), '\n');
-        cin >> start;
-    }
-    
-    // read in format
-    char format = start;
-    
-    // Getting Size
-    cin >> mapsize;
-
-    // make with necessary memory
-    Location loc;
-    
-    Map.resize(mapsize,vector<Location>(mapsize, loc));
-    
-    // type L
-    if(format == 'L') {
-        int row;
-        int col;
-        // Read in for L type
-        while(cin >> row >> col >> symbol) {
-            if(symbol == '@') {
-                start_loc.col = col;
-                start_loc.row = row;
+            
+            // Captain
+            /*
+            Conditionals:
+                - the argument provided must be either "QUEUE" or "STACK"
+            */
+            case 'c': {
+                string captain_input = optarg;
+                if (captain_input == "QUEUE" || captain_input == "STACK")
+                    container_cap = captain_input;
+                else {
+                    cerr << "Invalid argument to --captain" << endl;
+                    exit(1);
+                }
+                break;
             }
             
-            if(symbol == '$') {
-                end_loc.col = col;
-                end_loc.row = row;
+            // First Mate
+            /*
+            Conditionals:
+                - the argument provided must be either "QUEUE" or "STACK"
+            */
+            case 'f': {
+                string firstmate_input = optarg;
+                if (firstmate_input == "QUEUE" || firstmate_input == "STACK")
+                    container_first = firstmate_input;
+                else {
+                    cerr << "Invalid argument to --first-mate" << endl;
+                    exit(1);
+                }
+                break;
             }
-            Map[row][col].symbol = symbol;
+            
+            // Hunt Order
+            /*
+            Conditionals:
+                - the argument provided must be four characters long
+                - the argument provided must contain one and only one of each of "NESW" (in any order)
+            */
+            case 'o': {
+                // Make sure that its correct in input otherwise stderr and exit(1)
+                string huntOrder_input = optarg;
+                if (huntOrder_input.size() == 4) {
+                    for (string::size_type i = 0; i < huntOrder_input.size(); ++i) {
+                        if (huntOrder_input[i] == 'N'
+                            || huntOrder_input[i] == 'W'
+                            || huntOrder_input[i] == 'E'
+                            || huntOrder_input[i] == 'S') {
+                            if (i == 3) {
+                                huntOrder = huntOrder_input;
+                            }
+                        }
+                        else {
+                            cerr << "Invalid argument to --hunt-order" << endl;
+                            exit(1);
+                        }
+                    }
+                }
+                else {
+                    cerr << "Invalid argument to --hunt-order" << endl;
+                    exit(1);
+                }
+                break;
+            }
+            
+            // Verbose
+            case 'v': {
+                verbose = true;
+                break;
+            }
+            
+            // Stats
+            case 's': {
+                stats = true;
+                break;
+            }
+                
+            // Show Path
+            /*
+            Conditionals:
+                - the argument provided must be 'M' or 'L'
+                - The Show Path option can only be specified once (Check in the beginning of get_options())
+            */
+            case 'p': {
+                string path_input = optarg;
+                if (path_input == "M" || path_input == "L"){
+                    path = true;
+                    path_type = path_input;
+                }
+                else{
+                    cerr << "Invalid argument to --show-path" << endl;
+                    exit(1);
+                }
+                break;
+            }
+            
+            /*
+            CONDITION: All short or long options not in the spec should result in program
+                termination with a non-zero exit code
+            */
+            default:
+                cerr << "Unknown option" << endl;
+                exit(1);
+    
         }
     }
     
-    // type M
-    if(format == 'M') {
+}
+
+// Reading in the Map or List .txt
+void QuarterMaster::read_data() {
+    // Skipping Comments
+    char first_char;
+    
+    cin >> first_char;
+    while(first_char == '#') {
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cin >> first_char;
+    }
+    
+    // Read in Format Type
+    map_or_list_format = first_char;
+    
+    // Getting Size
+    cin >> n;
+    location d;
+    // Populating with neccessary memory
+    world_map.resize(n,vector<location>(n, d));
+    
+    if(map_or_list_format == 'L') {
+        unsigned int row;
+        unsigned int col;
+        char terrain;
+        // Read in for L type
+        while(cin >> row >> col >> terrain) {
+            if (terrain == '@') {
+                start.col = col;
+                start.row = row;
+            }
+            
+            if (terrain == '$') {
+                end.col = col;
+                end.row = row;
+            }
+            world_map[row][col].terrian = terrain;
+        }
+    }
+    
+    // Reading in for M type
+    if(map_or_list_format == 'M') {
         // Read in in Line Format
-        for(int i = 0; i < mapsize; ++i) {
-            for(int j = 0; j < mapsize; ++j) {
-                cin >> start;
-                if(start == '.')
+        for(unsigned int i = 0; i < n; ++i) {
+            for(unsigned int j = 0; j < n; ++j) {
+                cin >> first_char;
+                if(first_char == '.')
                     continue;
-                Map[i][j].symbol = start;
-                if(start == '@') {
-                    start_loc.col = j;
-                    start_loc.row = i;
+                world_map[i][j].terrian = first_char;
+                if (first_char == '@') {
+                    start.col = j;
+                    start.row = i;
                 }
                 
-                if(start == '$') {
-                    end_loc.col = j;
-                    end_loc.row = i;
-                }
-
-                if(start == NULL){
-                    cerr << "Map does not have a start location" << endl;
-                    exit(1);   
+                if (first_char == '$') {
+                    end.col = j;
+                    end.row = i;
                 }
             }
         }
     }
-
-   /*
-    Location loc;
-    loc.mapsize = 0;
-
-    std::cin >> mapsize >> std::ws;
-
-    Map.reserve(size_t(mapsize));
-
-    while(std::getline(std::cin, loc.first_char, '\n')){
-        //skip comments
-        if(loc.first_char[0] == '#'){
-            size_t pos = 0;
-
-             if ((pos = loc.first_char.find_last_of('\n')) != std::string::npos)
-				// Need a +1 here to move past the \n
-                loc.first_char = loc.first_char.substr(pos + 2);
-
-            // Otherwise just grab the rest of the line.
-            else {
-                std::getline(std::cin, loc.first_char);
-                continue;
-            }
-        }
-
-    // Get the rest of the line.
-        std::getline(std::cin, loc.format, '\n');
-        std::cin >> loc.mapsize >> std::ws;
-        
-        // Put the location into the map.
-        //put it where?
-        Map[loc.row][loc.col].push_back(loc);
-    }
-
-    // If we didn't read in any data, throw an error.
-    if (!Map.size())
-        throw std::runtime_error("No data was read in! Refer to the help option to see program usage.");
-    */
 }
-
-//start the hunt
-bool Treasure_Hunt::search(string search_goal, string container, Location here){
-    //while treasure is not found
-    int count = 0;
-    bool treasure_found = false;
-    //access start location
-    //access hunt order
-
-    if (search_goal == "land"){
-        if (container == "STACK"){
-            if (here.discovered == false && here.symbol == 'o'){
-                stacks.push(here);
-                search_goal = "treasure";
-            }
-        }
-        else{
-            if (here.discovered == false && here.symbol == 'o'){
-                queues.push(here);
-                search_goal = "treasure";
-            }
-        }
-    }
-
-
-    if (search_goal == "treasure"){
-        if (container == "QUEUE"){
-            if (here.discovered == false && here.symbol == '$'){
-                stacks.push(here);
-                treasure_found = true;
-            }
-
-            else{
-                search_goal = "land";
-            }
-        }
-        else{
-            if (here.discovered == false && here.symbol == '$'){
-                queues.push(here);
-                treasure_found = true;
-            }
-
-            else{
-                search_goal = "land";
-            }
-        }
-    }
-
-    return treasure_found;
-}
-
-
-void Treasure_Hunt::investigateforland(Location loc, string container){
-    int i = 0;
-    Location north;
-    Location east;
-    Location south;
-    Location west;
-    bool game_complete = false;
-
-
-    while(search("land", container, loc) != true){
-        if(hunt_order[i] =='N' && loc.row-1 != NULL){ 
-            north.row = loc.row-1;
-            north.col = loc.col;
-            game_complete = search("land", container, north); //if this returns true, game over
-        }
-        else if(hunt_order[i] == 'E' && loc.col + 1 != NULL){
-            east.row = loc.row;
-            east.col = loc.col + 1;
-            game_complete = search("land", container, east);
-        }
-        else if(hunt_order[i] == 'S' && loc.row + 1 != NULL){
-            south.row = loc.row + 1;
-            south.col = loc.col;
-            game_complete = search("land", container, south);
-        }
-        else if(hunt_order[i] == 'W' && loc.col - 1 != NULL){
-            west.row = loc.row;
-            west.col = loc.col - 1;
-            game_complete = search("land", container, west);
-        }
-
-        if(game_complete == true){
-            break;
-        }
-
-        if(i > 4){
-            break;
-        }
-
-        i++;
-    }
-}
-
-
-
-
-
