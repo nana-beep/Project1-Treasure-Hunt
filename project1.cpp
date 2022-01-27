@@ -788,5 +788,5 @@ void Members::search(bool &found, int &travel, Members firstmate, Game ship){
                     
         }
 
-
+    }
 }
