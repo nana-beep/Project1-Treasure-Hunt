@@ -6,7 +6,9 @@
 #include <getopt.h>
 #include <algorithm> // std::sort
 #include "hunt.h"
-
+#include <stack>
+#include <queue>
+using namespace std;
 
 class Treasure_Hunt {
     
@@ -18,19 +20,34 @@ public:
     // Read and process command line arguments.
     void get_options(int argc, char** argv);
     
-    // Sort and print the data.
-    void run();
+    //define search process
+    bool search(string search_goal, string container, Location loc);
+
+    void investigateforland(Location loc, string container);
+
+    // run the actual search
+    void run(string search_goal1, string search_goal2);
     
     
 private:
     std::string container_captain = "STACK";
     std::string container_firstmate = "QUEUE";
+
+    stack<Location> stack;
+    queue<Location> queue;
+
     std::string hunt_order = "NESW";
     std::string path;
+    int mapsize = 0;
+    Location start_loc;
+    Location end_loc;
+    char symbol;
+    char start;
+    char policy = '\0';
     bool verbose = false;
     bool stats = false;
-    char policy = '\0';
-    std::vector<vector<vector<Location>>> Map;
+    
+    std::vector<vector<Location>> Map;
 };
 
 
@@ -38,12 +55,17 @@ private:
 int main(int argc, char** argv){
     try{
         Treasure_Hunt hunt;
+        Location loc;
 
         hunt.get_options(argc, argv);
 
         hunt.read_data();
 
-        hunt.run();
+        hunt.search("land", "STACK",loc);
+
+        hunt.investigateforland(loc, "STACK");
+
+        hunt.run("land", "treasure");
     }
 
     catch(std::runtime_error& e){
@@ -132,7 +154,6 @@ void Treasure_Hunt::get_options(int argc, char** argv){
             //hunt order DOUBLE CHECK WHERE USED
             case 'o':{
                 std::string hunt_order_input = optarg;
-                bool hunt_order_input_exist = false;
 
                 //ensures that there are only four directions
                 if(hunt_order_input.size() != 4){
@@ -156,18 +177,12 @@ void Treasure_Hunt::get_options(int argc, char** argv){
                        hunt_order_input.at(i) == 'S' || hunt_order_input.at(i) == 'W'){
                            if(i == 3){
                                hunt_order = hunt_order_input;
-                               hunt_order_input_exist = true;
                            }
                        }
                     else{
                         std::cerr << "Invalid argument to --hunt-order" << std::endl;
                         exit(1);
                     }
-                }
-
-                //set up default DOUBLE CHECK
-                if(hunt_order_input_exist == false){
-                    hunt_order = 'NESW';
                 }
 
                 break;
@@ -239,25 +254,94 @@ void Treasure_Hunt::get_options(int argc, char** argv){
 
 //Read data into the program through stdin
 void Treasure_Hunt::read_data(){
+    /*
+    //ignore the lines that start with #
+    cin >> start;
+    while(start == '#') {
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cin >> start;
+    }
+    
+    // read in format
+    char format = start;
+    
+    // Getting Size
+    cin >> mapsize;
+
+    // make with necessary memory
     Location loc;
-    int mapsize = 0;
+    
+    Map.resize(mapsize,vector<Location>(mapsize, loc));
+    
+    // type L
+    if(format == 'L') {
+        int row;
+        int col;
+        // Read in for L type
+        while(cin >> row >> col >> symbol) {
+            if(symbol == '@') {
+                start_loc.col = col;
+                start_loc.row = row;
+            }
+            
+            if(symbol == '$') {
+                end_loc.col = col;
+                end_loc.row = row;
+            }
+            Map[row][col].symbol = symbol;
+        }
+    }
+    
+    // type M
+    if(format == 'M') {
+        // Read in in Line Format
+        for(int i = 0; i < mapsize; ++i) {
+            for(int j = 0; j < mapsize; ++j) {
+                cin >> start;
+                if(start == '.')
+                    continue;
+                Map[i][j].symbol = start;
+                if(start == '@') {
+                    start_loc.col = j;
+                    start_loc.row = i;
+                }
+                
+                if(start == '$') {
+                    end_loc.col = j;
+                    end_loc.row = i;
+                }
+
+                if(start == NULL){
+                    cerr << "Map does not have a start location" << endl;
+                    exit(1);   
+                }
+            }
+        }
+    }
+
+    */
+
+
+   /*
+    Location loc;
+    loc.mapsize = 0;
 
     std::cin >> mapsize >> std::ws;
 
     Map.reserve(size_t(mapsize));
 
-    while(std::getline(std::cin, loc.symbol, '\n')){
+    while(std::getline(std::cin, loc.first_char, '\n')){
         //skip comments
-        if(loc.symbol[0] == '#'){
+        if(loc.first_char[0] == '#'){
             size_t pos = 0;
 
-             if ((pos = loc.symbol.find_last_of('\n')) != std::string::npos)
+             if ((pos = loc.first_char.find_last_of('\n')) != std::string::npos)
 				// Need a +1 here to move past the \n
-                loc.symbol = loc.symbol.substr(pos + 2);
+                loc.first_char = loc.first_char.substr(pos + 2);
 
             // Otherwise just grab the rest of the line.
             else {
-                std::getline(std::cin, loc.symbol);
+                std::getline(std::cin, loc.first_char);
                 continue;
             }
         }
@@ -274,51 +358,104 @@ void Treasure_Hunt::read_data(){
     // If we didn't read in any data, throw an error.
     if (!Map.size())
         throw std::runtime_error("No data was read in! Refer to the help option to see program usage.");
+    */
 }
 
 //start the hunt
-void Treasure_Hunt::run(){
+bool Treasure_Hunt::search(string search_goal, string container, Location here){
     //while treasure is not found
-    while(/*THE TREASURE IS NOT FOUND*/){
+    int count = 0;
+    bool treasure_found = false;
+    //access start location
+    //access hunt order
 
-        //find start location. if not found, state 'Map does not have a start location'
+    if (search_goal == "land"){
+        if (container == "STACK"){
+            if (here.discovered == false && here.symbol == 'o'){
+                stack.push(here);
+                search_goal = "treasure";
+            }
+        }
+        else{
+            if (here.discovered == false && here.symbol == 'o'){
+                queue.push(here);
+                search_goal = "treasure";
+            }
+        }
+    }
 
-        //when captain goes
-        if(policy == 'c'){
-            if(container_captain == "QUEUE"){
 
+    if (search_goal == "treasure"){
+        if (container == "QUEUE"){
+            if (here.discovered == false && here.symbol == '$'){
+                stack.push(here);
+                treasure_found = true;
             }
 
-            else if(container_captain == "STACK"){
-
+            else{
+                search_goal = "land";
             }
-        //based on hunt order, move through '.' only
+        }
+        else{
+            if (here.discovered == false && here.symbol == '$'){
+                queue.push(here);
+                treasure_found = true;
+            }
 
-        //if 'o' is discovered, stops until firstmate is done with search
-        //if true, do not search again  
+            else{
+                search_goal = "land";
+            }
+        }
+    }
+
+    return treasure_found;
+}
+
+
+void Treasure_Hunt::investigateforland(Location loc, string container){
+    int i = 0;
+    Location north;
+    Location east;
+    Location south;
+    Location west;
+    bool game_complete = false;
+
+
+    while(search("land", container, loc) != true){
+        if(hunt_order[i] =='N' && loc.row-1 != NULL){ 
+            north.row = loc.row-1;
+            north.col = loc.col;
+            game_complete = search("land", container, north); //if this returns true, game over
+        }
+        else if(hunt_order[i] == 'E' && loc.col + 1 != NULL){
+            east.row = loc.row;
+            east.col = loc.col + 1;
+            game_complete = search("land", container, east);
+        }
+        else if(hunt_order[i] == 'S' && loc.row + 1 != NULL){
+            south.row = loc.row + 1;
+            south.col = loc.col;
+            game_complete = search("land", container, south);
+        }
+        else if(hunt_order[i] == 'W' && loc.col - 1 != NULL){
+            west.row = loc.row;
+            west.col = loc.col - 1;
+            game_complete = search("land", container, west);
         }
 
-        //when first mate goes
-        if(policy == 'f'){
-            if(container_firstmate == "QUEUE"){
-
-            }
-
-            else if(container_captain == "STACK"){
-                
-            }
-        //start on the 'o' captain stopped at
-        //based on hunt order, move through 'o' only
-
-        //if 'o' is discovered that spot ==true and firstmate does not search again
-        //keep going until all 'o' is discovered or treasure is found
-
-        //otherwise, stop and let captain travel again
+        if(game_complete == true){
+            break;
         }
 
-        //if '$' is not found, return 'Map does not have treasure'
+        if(i > 4){
+            break;
+        }
+
+        i++;
     }
 }
+
+
 
 
 
