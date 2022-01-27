@@ -14,20 +14,20 @@ using namespace std;
 //                       Quarter Master Declarations
 // ----------------------------------------------------------------------------
 
-class QuarterMaster {
+class Game {
     
 public:
     
     // Members
     // Optimization Tip: Make sure to order from biggest size to smallest
     // 2-D Vector
-    vector<vector<location>> world_map;
+    vector<vector<position>> Map;
     
     // DEFAULT
-    string container_cap = "STACK";
-    string container_first = "QUEUE";
-    string huntOrder = "NESW";
-    char map_or_list_format;
+    string Captian_method = "STACK";
+    string Firstmate_method = "QUEUE";
+    string Order = "NESW";
+    char type;
     string path_type;
     unsigned int n;
     int land_traveled = 0;
@@ -37,8 +37,8 @@ public:
     bool stats = false;
     bool path = false;
     
-    coordinate start;
-    coordinate end;
+    Location start;
+    Location end;
     
     // Read in the .txt treasure file through stdin.
     void read_data();
@@ -47,32 +47,33 @@ public:
     void get_options(int argc, char** argv);
     
     // Print Stats
-    void print_stats();
+    //void print_stats();
     
     // Print Path
-    void print_path(string path_value);
+    //void print_path(string path_value);
     
 };
 
 // ----------------------------------------------------------------------------
-//                          Crew Declarations
+//                          Members Declarations
 // ----------------------------------------------------------------------------
 
-struct Crew {
+struct Members {
     
 public:
     
     string hunt_strat;
-    string container_type;
-    deque<coordinate> to_explore;
-    coordinate current;
+    string SorQ;
+    deque<Location> investigate;
+    Location CapCurrent;
+    Location FirCurrent;
     
-    Crew(string hunt_idea, string storing) {
+    Members(string hunt_idea, string storing) {
         hunt_strat = hunt_idea;
-        container_type = storing;
+        SorQ = storing;
     }
     
-    void search(bool &found, int &travel);
+    void search(bool &found, int &travel, Members firstmate, Game ship);
     
 };
 
@@ -88,42 +89,42 @@ int main(int argc, char * argv[]) {
     xcode_redirect(argc, argv);
     
     // Ship is the person who will know everything and be able to provide you information
-    QuarterMaster ship;
+    Game ship;
     
     ship.get_options(argc, argv);
     ship.read_data();
     
-    // Create the Crew
-    Crew captain(ship.huntOrder, ship.container_cap);
-    Crew firstmate(ship.huntOrder, ship.container_first);
+    // Create the Members
+    Members captain(ship.Order, ship.Captian_method);
+    Members firstmate(ship.Order, ship.Firstmate_method);
     
     bool treasure_found = false;
     
     // Captain "STACK" or "QUEUE"
-    switch (captain.container_type[0]) {
+    switch (captain.SorQ[0]) {
         // STACK
         case 'S': {
-            // Adding "START LOCATION" to 'to_explore' deque
-            captain.to_explore.push_front(ship.start);
+            // Adding "START LOCATION" to 'investigate' deque
+            captain.investigate.push_front(ship.start);
             ship.water_traveled = ship.water_traveled + 1;
             
             // Verbose "Treasure hunt started at: ..."
             if (ship.verbose)
                 cout << "Treasure hunt started at: " << ship.start.row << ship.start.col << "/n";
             
-            while(!captain.to_explore.empty() || !treasure_found) {
+            while(!captain.investigate.empty() || !treasure_found) {
                 
-                // Set current location to top of stack
-                captain.current = captain.to_explore.front();
+                // Set CapCurrent location to top of stack
+                captain.CapCurrent = captain.investigate.front();
                 
                 // Check to see if it has not been discovered
-                if (!ship.world_map[captain.current.row][captain.current.col].discovered) {
-                    ship.world_map[captain.current.row][captain.current.col].discovered = true;
+                if (!ship.Map[captain.CapCurrent.row][captain.CapCurrent.col].discovered) {
+                    ship.Map[captain.CapCurrent.row][captain.CapCurrent.col].discovered = true;
                     ship.water_traveled = ship.water_traveled + 1;
                 }
                 
                 // Removing from sail container
-                captain.to_explore.pop_front();
+                captain.investigate.pop_front();
                 
                 // Loop through Hunt Order
                 for(string::size_type i = 0; i < captain.hunt_strat.size(); ++i) {
@@ -132,40 +133,45 @@ int main(int argc, char * argv[]) {
                     if (captain.hunt_strat[i] == 'N') {
                         
                         // 'out of bounds'
-                        if (captain.current.row == 0)
+                        if (captain.CapCurrent.row == 0)
                             continue;
                         
                         // '.'
-                        if (ship.world_map[captain.current.row - 1][captain.current.col].terrian == '.') {
-                            if (!ship.world_map[captain.current.row - 1][captain.current.col].discovered) {
+                        if (ship.Map[captain.CapCurrent.row - 1][captain.CapCurrent.col].symbol == '.') {
+                            if (!ship.Map[captain.CapCurrent.row - 1][captain.CapCurrent.col].discovered) {
                                 
                                 // Set previous
-                                if (captain.current.row - 1 != ship.start.row || captain.current.col != ship.start.col)
-                                        ship.world_map[captain.current.row - 1][captain.current.col].previos_step = 'W';
+                                if (captain.CapCurrent.row - 1 != ship.start.row || captain.CapCurrent.col != ship.start.col)
+                                        ship.Map[captain.CapCurrent.row - 1][captain.CapCurrent.col].prev = 'N';
                                 
-                                coordinate temp;
-                                temp.row = captain.current.row - 1;
-                                temp.col = captain.current.col;
-                                captain.to_explore.push_front(temp);
+                                Location temp;
+                                temp.row = captain.CapCurrent.row - 1;
+                                temp.col = captain.CapCurrent.col;
+                                captain.investigate.push_front(temp);
                             }
                         }
                         
                         // 'o' || '$'
-                        if (ship.world_map[captain.current.row - 1][captain.current.col].terrian == 'o' ||
-                            ship.world_map[captain.current.row - 1][captain.current.col].terrian == '$') {
-                            if (!ship.world_map[captain.current.row - 1][captain.current.col].discovered) {
+                        if (ship.Map[captain.CapCurrent.row - 1][captain.CapCurrent.col].symbol == 'o' ||
+                            ship.Map[captain.CapCurrent.row - 1][captain.CapCurrent.col].symbol == '$') {
+                            if (ship.Map[captain.CapCurrent.row - 1][captain.CapCurrent.col].discovered == false) {
                                 
                                 // Went ashore
-                                ship.ashore = ship.ashore + 1;
+                                ship.ashore = ship.ashore++;
                                 
                                 // Verbose "Went ashore at: ..."
                                 if (ship.verbose) {
-                                    cout << "Went ashore at: " << captain.current.row - 1 << "," << captain.current.col << "/n";
+                                    cout << "Went ashore at: " << captain.CapCurrent.row - 1 << "," << captain.CapCurrent.col << "/n";
                                     cout << "Searching island... ";
                                 }
+                                Location temp;
+                                temp.row = captain.CapCurrent.row - 1;
+                                temp.col = captain.CapCurrent.col;
+                                captain.investigate.push_front(temp);
                                 
                                 // Run first mate --- set previous in the search function
-                                firstmate.search(treasure_found,ship.land_traveled);
+                                firstmate.search(treasure_found,ship.land_traveled, firstmate, ship);
+
                                 
                                 // Check for treasure
                                 if (treasure_found)
@@ -182,7 +188,7 @@ int main(int argc, char * argv[]) {
                         }
                         
                         // '#'
-                        if (ship.world_map[captain.current.row - 1][captain.current.col].terrian == '#') {
+                        if (ship.Map[captain.CapCurrent.row - 1][captain.CapCurrent.col].symbol == '#') {
                             continue;
                         }
                     }
@@ -191,40 +197,40 @@ int main(int argc, char * argv[]) {
                     if (captain.hunt_strat[i] == 'E') {
                         
                         // 'out of bounds'
-                        if (captain.current.col == (ship.n - 1))
+                        if (captain.CapCurrent.col == (ship.n - 1))
                             continue;
                         
                         // '.'
-                        if (ship.world_map[captain.current.row][captain.current.col + 1].terrian == '.') {
-                            if (!ship.world_map[captain.current.row][captain.current.col + 1].discovered) {
+                        if (ship.Map[captain.CapCurrent.row][captain.CapCurrent.col + 1].symbol == '.') {
+                            if (!ship.Map[captain.CapCurrent.row][captain.CapCurrent.col + 1].discovered) {
                                 
                                 // Set previous
-                                if (captain.current.row != ship.start.row || captain.current.col + 1 != ship.start.col)
-                                        ship.world_map[captain.current.row][captain.current.col + 1].previos_step = 'E';
+                                if (captain.CapCurrent.row != ship.start.row || captain.CapCurrent.col + 1 != ship.start.col)
+                                        ship.Map[captain.CapCurrent.row][captain.CapCurrent.col + 1].prev = 'E';
                                 
-                                coordinate temp;
-                                temp.row = captain.current.row;
-                                temp.col = captain.current.col + 1;
-                                captain.to_explore.push_front(temp);
+                                Location temp;
+                                temp.row = captain.CapCurrent.row;
+                                temp.col = captain.CapCurrent.col + 1;
+                                captain.investigate.push_front(temp);
                             }
                         }
                         
                         // 'o' || '$'
-                        if (ship.world_map[captain.current.row][captain.current.col + 1].terrian == 'o' ||
-                            ship.world_map[captain.current.row][captain.current.col + 1].terrian == '$') {
-                            if (!ship.world_map[captain.current.row][captain.current.col + 1].discovered) {
+                        if (ship.Map[captain.CapCurrent.row][captain.CapCurrent.col + 1].symbol == 'o' ||
+                            ship.Map[captain.CapCurrent.row][captain.CapCurrent.col + 1].symbol == '$') {
+                            if (!ship.Map[captain.CapCurrent.row][captain.CapCurrent.col + 1].discovered) {
                                 
                                 // Went ashore
                                 ship.ashore = ship.ashore + 1;
                                 
                                 // Verbose "Went ashore at: ..."
                                 if (ship.verbose) {
-                                    cout << "Went ashore at: " << captain.current.row << "," << captain.current.col + 1 << "/n";
+                                    cout << "Went ashore at: " << captain.CapCurrent.row << "," << captain.CapCurrent.col + 1 << "/n";
                                     cout << "Searching island... ";
                                 }
                                 
                                 // Run first mate --- set previous in the search function
-                                firstmate.search(treasure_found,ship.land_traveled);
+                                firstmate.search(treasure_found,ship.land_traveled, firstmate, ship);
                                 
                                 // Check for treasure
                                 if (treasure_found)
@@ -241,7 +247,7 @@ int main(int argc, char * argv[]) {
                         }
                         
                         // '#'
-                        if (ship.world_map[captain.current.row][captain.current.col + 1].terrian == '#') {
+                        if (ship.Map[captain.CapCurrent.row][captain.CapCurrent.col + 1].symbol == '#') {
                             continue;
                         }
                     }
@@ -250,40 +256,40 @@ int main(int argc, char * argv[]) {
                     if (captain.hunt_strat[i] == 'S') {
                         
                         // 'out of bounds'
-                        if (captain.current.row == (ship.n - 1))
+                        if (captain.CapCurrent.row == (ship.n - 1))
                             continue;
                         
                         // '.'
-                        if (ship.world_map[captain.current.row + 1][captain.current.col].terrian == '.') {
-                            if (!ship.world_map[captain.current.row + 1][captain.current.col].discovered) {
+                        if (ship.Map[captain.CapCurrent.row + 1][captain.CapCurrent.col].symbol == '.') {
+                            if (!ship.Map[captain.CapCurrent.row + 1][captain.CapCurrent.col].discovered) {
                                 
                                 // Set previous
-                                if (captain.current.row + 1 != ship.start.row || captain.current.col != ship.start.col)
-                                        ship.world_map[captain.current.row + 1][captain.current.col].previos_step = 'S';
+                                if (captain.CapCurrent.row + 1 != ship.start.row || captain.CapCurrent.col != ship.start.col)
+                                        ship.Map[captain.CapCurrent.row + 1][captain.CapCurrent.col].prev = 'S';
                                 
-                                coordinate temp;
-                                temp.row = captain.current.row + 1;
-                                temp.col = captain.current.col;
-                                captain.to_explore.push_front(temp);
+                                Location temp;
+                                temp.row = captain.CapCurrent.row + 1;
+                                temp.col = captain.CapCurrent.col;
+                                captain.investigate.push_front(temp);
                             }
                         }
                         
                         // 'o' || '$'
-                        if (ship.world_map[captain.current.row + 1][captain.current.col].terrian == 'o' ||
-                            ship.world_map[captain.current.row + 1][captain.current.col].terrian == '$') {
-                            if (!ship.world_map[captain.current.row + 1][captain.current.col].discovered) {
+                        if (ship.Map[captain.CapCurrent.row + 1][captain.CapCurrent.col].symbol == 'o' ||
+                            ship.Map[captain.CapCurrent.row + 1][captain.CapCurrent.col].symbol == '$') {
+                            if (!ship.Map[captain.CapCurrent.row + 1][captain.CapCurrent.col].discovered) {
                                 
                                 // Went ashore
                                 ship.ashore = ship.ashore + 1;
                                 
                                 // Verbose "Went ashore at: ..."
                                 if (ship.verbose) {
-                                    cout << "Went ashore at: " << captain.current.row + 1 << "," << captain.current.col << "/n";
+                                    cout << "Went ashore at: " << captain.CapCurrent.row + 1 << "," << captain.CapCurrent.col << "/n";
                                     cout << "Searching island... ";
                                 }
                                 
                                 // Run first mate --- set previous in the search function
-                                firstmate.search(treasure_found,ship.land_traveled);
+                                firstmate.search(treasure_found,ship.land_traveled, firstmate, ship);
                                 
                                 // Check for treasure
                                 if (treasure_found)
@@ -300,7 +306,7 @@ int main(int argc, char * argv[]) {
                         }
                         
                         // '#'
-                        if (ship.world_map[captain.current.row + 1][captain.current.col].terrian == '#') {
+                        if (ship.Map[captain.CapCurrent.row + 1][captain.CapCurrent.col].symbol == '#') {
                             continue;
                         }
                     }
@@ -309,40 +315,40 @@ int main(int argc, char * argv[]) {
                     if (captain.hunt_strat[i] == 'W') {
                         
                         // 'out of bounds'
-                        if (captain.current.col == 0)
+                        if (captain.CapCurrent.col == 0)
                             continue;
                         
                         // '.'
-                        if (ship.world_map[captain.current.row][captain.current.col - 1].terrian == '.') {
-                            if (!ship.world_map[captain.current.row][captain.current.col - 1].discovered) {
+                        if (ship.Map[captain.CapCurrent.row][captain.CapCurrent.col - 1].symbol == '.') {
+                            if (!ship.Map[captain.CapCurrent.row][captain.CapCurrent.col - 1].discovered) {
                                 
                                 // Set previous
-                                if (captain.current.row != ship.start.row || captain.current.col - 1 != ship.start.col)
-                                        ship.world_map[captain.current.row][captain.current.col - 1].previos_step = 'W';
+                                if (captain.CapCurrent.row != ship.start.row || captain.CapCurrent.col - 1 != ship.start.col)
+                                        ship.Map[captain.CapCurrent.row][captain.CapCurrent.col - 1].prev = 'W';
                                 
-                                coordinate temp;
-                                temp.row = captain.current.row;
-                                temp.col = captain.current.col - 1;
-                                captain.to_explore.push_front(temp);
+                                Location temp;
+                                temp.row = captain.CapCurrent.row;
+                                temp.col = captain.CapCurrent.col - 1;
+                                captain.investigate.push_front(temp);
                             }
                         }
                         
                         // 'o' || '$'
-                        if (ship.world_map[captain.current.row][captain.current.col - 1].terrian == 'o' ||
-                            ship.world_map[captain.current.row][captain.current.col - 1].terrian == '$') {
-                            if (!ship.world_map[captain.current.row][captain.current.col - 1].discovered) {
+                        if (ship.Map[captain.CapCurrent.row][captain.CapCurrent.col - 1].symbol == 'o' ||
+                            ship.Map[captain.CapCurrent.row][captain.CapCurrent.col - 1].symbol == '$') {
+                            if (!ship.Map[captain.CapCurrent.row][captain.CapCurrent.col - 1].discovered) {
                                 
                                 // Went ashore
                                 ship.ashore = ship.ashore + 1;
                                 
                                 // Verbose "Went ashore at: ..."
                                 if (ship.verbose) {
-                                    cout << "Went ashore at: " << captain.current.row << "," << captain.current.col - 1 << "/n";
+                                    cout << "Went ashore at: " << captain.CapCurrent.row << "," << captain.CapCurrent.col - 1 << "/n";
                                     cout << "Searching island... ";
                                 }
                                 
                                 // Run first mate --- set previous in the search function
-                                firstmate.search(treasure_found,ship.land_traveled);
+                                firstmate.search(treasure_found,ship.land_traveled, firstmate, ship);
                                 
                                 // Check for treasure
                                 if (treasure_found)
@@ -359,17 +365,17 @@ int main(int argc, char * argv[]) {
                         }
                         
                         // '#'
-                        if (ship.world_map[captain.current.row][captain.current.col - 1].terrian == '#') {
+                        if (ship.Map[captain.CapCurrent.row][captain.CapCurrent.col - 1].symbol == '#') {
                             continue;
                         }
                     }
                 }
                 
                 // Output
-                if (ship.stats)
-                    ship.print_stats();
-                if (ship.path)
-                    ship.print_path(ship.path_type);
+                //if (ship.stats)
+                    //ship.print_stats();
+                //if (ship.path)
+                    //ship.print_path(ship.path_type);
                 
                 // Will need a path length later when doing "backtracing" have to find path back no matter what
                 if (treasure_found)
@@ -410,7 +416,7 @@ int main(int argc, char * argv[]) {
         (if unspecified, container default is queue)
  
     [--hunt-order | -o] <ORDER>
-        The order of discovery of adjacent tiles around the current location,
+        The order of discovery of adjacent tiles around the CapCurrent location,
         a four character string using exactly one of each of the four characters 'N', 'E', 'S', and 'W'
         (if unspecified, the default order is: North->East->South->West)
  
@@ -425,7 +431,7 @@ int main(int argc, char * argv[]) {
  
  */
 
-void QuarterMaster::get_options(int argc, char** argv) {
+void Game::get_options(int argc, char** argv) {
     int option_index = 0, option = 0;
     
     // Don't display getopt error messages about options
@@ -490,7 +496,7 @@ void QuarterMaster::get_options(int argc, char** argv) {
             case 'c': {
                 string captain_input = optarg;
                 if (captain_input == "QUEUE" || captain_input == "STACK")
-                    container_cap = captain_input;
+                    Captian_method = captain_input;
                 else {
                     cerr << "Invalid argument to --captain" << endl;
                     exit(1);
@@ -506,7 +512,7 @@ void QuarterMaster::get_options(int argc, char** argv) {
             case 'f': {
                 string firstmate_input = optarg;
                 if (firstmate_input == "QUEUE" || firstmate_input == "STACK")
-                    container_first = firstmate_input;
+                    Firstmate_method = firstmate_input;
                 else {
                     cerr << "Invalid argument to --first-mate" << endl;
                     exit(1);
@@ -522,15 +528,15 @@ void QuarterMaster::get_options(int argc, char** argv) {
             */
             case 'o': {
                 // Make sure that its correct in input otherwise stderr and exit(1)
-                string huntOrder_input = optarg;
-                if (huntOrder_input.size() == 4) {
-                    for (string::size_type i = 0; i < huntOrder_input.size(); ++i) {
-                        if (huntOrder_input[i] == 'N'
-                            || huntOrder_input[i] == 'W'
-                            || huntOrder_input[i] == 'E'
-                            || huntOrder_input[i] == 'S') {
+                string Order_input = optarg;
+                if (Order_input.size() == 4) {
+                    for (string::size_type i = 0; i < Order_input.size(); ++i) {
+                        if (Order_input[i] == 'N'
+                            || Order_input[i] == 'W'
+                            || Order_input[i] == 'E'
+                            || Order_input[i] == 'S') {
                             if (i == 3) {
-                                huntOrder = huntOrder_input;
+                                Order = Order_input;
                             }
                         }
                         else {
@@ -591,7 +597,7 @@ void QuarterMaster::get_options(int argc, char** argv) {
 }
 
 // Reading in the Map or List .txt
-void QuarterMaster::read_data() {
+void Game::read_data() {
     // Skipping Comments
     char first_char;
     
@@ -602,42 +608,42 @@ void QuarterMaster::read_data() {
     }
     
     // Read in Format Type
-    map_or_list_format = first_char;
+    type = first_char;
     
     // Getting Size
     cin >> n;
-    location d;
+    position d;
     // Populating with neccessary memory
-    world_map.resize(n,vector<location>(n, d));
+    Map.resize(n,vector<position>(n, d));
     
-    if(map_or_list_format == 'L') {
+    if(type == 'L') {
         unsigned int row;
         unsigned int col;
-        char terrain;
+        char symbol;
         // Read in for L type
-        while(cin >> row >> col >> terrain) {
-            if (terrain == '@') {
+        while(cin >> row >> col >> symbol) {
+            if (symbol == '@') {
                 start.col = col;
                 start.row = row;
             }
             
-            if (terrain == '$') {
+            if (symbol == '$') {
                 end.col = col;
                 end.row = row;
             }
-            world_map[row][col].terrian = terrain;
+            Map[row][col].symbol = symbol;
         }
     }
     
     // Reading in for M type
-    if(map_or_list_format == 'M') {
+    if(type == 'M') {
         // Read in in Line Format
         for(unsigned int i = 0; i < n; ++i) {
             for(unsigned int j = 0; j < n; ++j) {
                 cin >> first_char;
                 if(first_char == '.')
                     continue;
-                world_map[i][j].terrian = first_char;
+                Map[i][j].symbol = first_char;
                 if (first_char == '@') {
                     start.col = j;
                     start.row = i;
@@ -650,4 +656,137 @@ void QuarterMaster::read_data() {
             }
         }
     }
+}
+
+void Members::search(bool &found, int &travel, Members firstmate, Game ship){
+    while(!firstmate.investigate.empty() || !found) {
+                    
+        // Set CapCurrent location to top of stack
+        firstmate.FirCurrent = firstmate.investigate.front();
+        
+        // Check to see if it has not been discovered
+        if (!ship.Map[firstmate.FirCurrent.row][firstmate.FirCurrent.col].discovered) {
+            ship.Map[firstmate.FirCurrent.row][firstmate.FirCurrent.col].discovered = true;
+            ship.water_traveled = ship.water_traveled + 1;
+        }
+        // Removing from sail container
+        firstmate.investigate.pop_front();
+
+        for(string::size_type i = 0; i < firstmate.hunt_strat.size(); ++i) {
+                    
+                    // North
+                    if (firstmate.hunt_strat[i] == 'N') {
+                        
+                        // 'out of bounds'
+                        if (firstmate.FirCurrent.row == 0)
+                            continue;
+                        
+                        // '.'
+                        if (ship.Map[firstmate.FirCurrent.row - 1][firstmate.FirCurrent.col].symbol == 'o') {
+                            if (!ship.Map[firstmate.FirCurrent.row - 1][firstmate.FirCurrent.col].discovered) {
+                                
+                                // Set previous
+                                if (firstmate.CapCurrent.row - 1 != ship.start.row || firstmate.FirCurrent.col != ship.start.col)
+                                        ship.Map[firstmate.CapCurrent.row - 1][firstmate.FirCurrent.col].prev = 'N';
+                                
+                                Location temp;
+                                temp.row = firstmate.FirCurrent.row - 1;
+                                temp.col = firstmate.FirCurrent.col;
+                                firstmate.investigate.push_front(temp);
+                            }
+                        }
+                    }
+
+                    if (ship.Map[firstmate.FirCurrent.row - 1][firstmate.FirCurrent.col].symbol == '$'){
+                        found = true;
+                        break;
+                    }
+
+                    //East
+                    if (firstmate.hunt_strat[i] == 'E') {
+                        
+                        // 'out of bounds'
+                        if (firstmate.FirCurrent.row == 0)
+                            continue;
+                        
+                        // '.'
+                        if (ship.Map[firstmate.FirCurrent.row][firstmate.FirCurrent.col + 1].symbol == 'o') {
+                            if (!ship.Map[firstmate.FirCurrent.row][firstmate.FirCurrent.col + 1].discovered) {
+                                
+                                // Set previous
+                                if (firstmate.CapCurrent.row != ship.start.row || firstmate.FirCurrent.col + 1 != ship.start.col)
+                                        ship.Map[firstmate.CapCurrent.row][firstmate.FirCurrent.col + 1].prev = 'E';
+                                
+                                Location temp;
+                                temp.row = firstmate.FirCurrent.row;
+                                temp.col = firstmate.FirCurrent.col + 1;
+                                firstmate.investigate.push_front(temp);
+                            }
+                        }
+                    }
+
+                    if (ship.Map[firstmate.FirCurrent.row][firstmate.FirCurrent.col + 1].symbol == '$'){
+                        found = true;
+                        break;
+                    }
+
+                    //South
+                    if (firstmate.hunt_strat[i] == 'S') {
+                        
+                        // 'out of bounds'
+                        if (firstmate.FirCurrent.row == 0)
+                            continue;
+                        
+                        // '.'
+                        if (ship.Map[firstmate.FirCurrent.row + 1][firstmate.FirCurrent.col].symbol == 'o') {
+                            if (!ship.Map[firstmate.FirCurrent.row - 1][firstmate.FirCurrent.col].discovered) {
+                                
+                                // Set previous
+                                if (firstmate.CapCurrent.row + 1 != ship.start.row || firstmate.FirCurrent.col != ship.start.col)
+                                        ship.Map[firstmate.CapCurrent.row + 1][firstmate.FirCurrent.col].prev = 'S';
+                                
+                                Location temp;
+                                temp.row = firstmate.FirCurrent.row + 1;
+                                temp.col = firstmate.FirCurrent.col;
+                                firstmate.investigate.push_front(temp);
+                            }
+                        }
+                    }
+
+                    if (ship.Map[firstmate.FirCurrent.row + 1][firstmate.FirCurrent.col].symbol == '$'){
+                        found = true;
+                        break;
+                    }
+
+                    //West
+                    if (firstmate.hunt_strat[i] == 'W') {
+                        
+                        // 'out of bounds'
+                        if (firstmate.FirCurrent.row == 0)
+                            continue;
+                        
+                        // '.'
+                        if (ship.Map[firstmate.FirCurrent.row][firstmate.FirCurrent.col - 1].symbol == 'o') {
+                            if (!ship.Map[firstmate.FirCurrent.row][firstmate.FirCurrent.col - 1].discovered) {
+                                
+                                // Set previous
+                                if (firstmate.CapCurrent.row != ship.start.row || firstmate.FirCurrent.col - 1 != ship.start.col)
+                                        ship.Map[firstmate.CapCurrent.row][firstmate.FirCurrent.col - 1].prev = 'W';
+                                
+                                Location temp;
+                                temp.row = firstmate.FirCurrent.row;
+                                temp.col = firstmate.FirCurrent.col - 1;
+                                firstmate.investigate.push_front(temp);
+                            }
+                        }
+                    }
+
+                    if (ship.Map[firstmate.FirCurrent.row][firstmate.FirCurrent.col - 1].symbol == '$'){
+                        found = true;
+                        break;
+                    }
+                    
+        }
+
+
 }
