@@ -254,9 +254,9 @@ void Treasure_Hunt::get_options(int argc, char** argv){
 
 //Read data into the program through stdin
 void Treasure_Hunt::read_data(){
-    /*
     //ignore the lines that start with #
     cin >> start;
+    
     while(start == '#') {
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
         cin >> start;
@@ -318,9 +318,6 @@ void Treasure_Hunt::read_data(){
             }
         }
     }
-
-    */
-
 
    /*
     Location loc;
