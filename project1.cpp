@@ -33,8 +33,8 @@ private:
     std::string container_captain = "STACK";
     std::string container_firstmate = "QUEUE";
 
-    stack<Location> stack;
-    queue<Location> queue;
+    std::stack<Location> stacks;
+    std::queue<Location> queues;
 
     std::string hunt_order = "NESW";
     std::string path;
@@ -372,13 +372,13 @@ bool Treasure_Hunt::search(string search_goal, string container, Location here){
     if (search_goal == "land"){
         if (container == "STACK"){
             if (here.discovered == false && here.symbol == 'o'){
-                stack.push(here);
+                stacks.push(here);
                 search_goal = "treasure";
             }
         }
         else{
             if (here.discovered == false && here.symbol == 'o'){
-                queue.push(here);
+                queues.push(here);
                 search_goal = "treasure";
             }
         }
@@ -388,7 +388,7 @@ bool Treasure_Hunt::search(string search_goal, string container, Location here){
     if (search_goal == "treasure"){
         if (container == "QUEUE"){
             if (here.discovered == false && here.symbol == '$'){
-                stack.push(here);
+                stacks.push(here);
                 treasure_found = true;
             }
 
@@ -398,7 +398,7 @@ bool Treasure_Hunt::search(string search_goal, string container, Location here){
         }
         else{
             if (here.discovered == false && here.symbol == '$'){
-                queue.push(here);
+                queues.push(here);
                 treasure_found = true;
             }
 
