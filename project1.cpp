@@ -1289,10 +1289,10 @@ void Game::print_showpath(string path) {
 void Game::print_stats() {
     
     cout<<"--- STATS ---\n";
-    cout<<"initialing location: "<<initial.r<<","<<initial.c<<endl;
+    cout<<"Starting location: "<<initial.r<<","<<initial.c<<endl;
     cout<<"Water locations investigated: "<<waterlength<<endl;
     cout<<"Land locations investigated: "<<landlength<<endl;
-    cout<<"Went landed: "<<landed<<endl;
+    cout<<"Went ashore: "<<landed<<endl;
     cout<<"Path length: "<<pathdir.size()<<endl;
     cout<<"--- STATS ---"<<endl;
 }
