@@ -47,7 +47,7 @@ public:
     
     void print_stats();
 
-    void print_path(string path_value);
+    void print_showpath(string path_value);
 
 };
 
@@ -785,7 +785,7 @@ int main(int argc, char * argv[]) {
                 
                 
                 if (game.path)
-                    game.print_path(game.path_type);
+                    game.print_showpath(game.path_type);
 
                 if (game.stats)
                     game.print_stats();
@@ -1098,7 +1098,7 @@ int main(int argc, char * argv[]) {
                 if (game.stats)
                     game.print_stats();
                 if (game.path)
-                    game.print_path(game.path_type);    
+                    game.print_showpath(game.path_type);    
             }
             
         }
@@ -1280,7 +1280,7 @@ void Game::get_options(int argc, char** argv) {
     
 }
 
-void Game::print_path(string path) {
+void Game::print_showpath(string path) {
     //unsure how to print the path
     //cout << path << endl;
 }
