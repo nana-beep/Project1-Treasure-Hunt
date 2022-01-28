@@ -1181,15 +1181,16 @@ void Game::get_options(int argc, char** argv) {
     
     while ((option=getopt_long(argc, argv, "c:f:o:p:hvs", longOpts, &option_index)) != -1) {
 
-        if (option=='p')
-            path_used=true;                                                                             
+                                                                           
 
         if (path_used) {
             cerr<<"Specify --show-path only once"<<endl;
             exit(1);
         }
+
+        if (option=='p')
+            path_used=true;  
             
-        
         switch (option) {
             case 'c': {
                 string captain_input=optarg;
@@ -1282,7 +1283,8 @@ void Game::get_options(int argc, char** argv) {
 
 void Game::print_showpath(string path) {
     //unsure how to print the path
-    //cout << path << endl;
+    string show = path;
+    //cout << show << endl;
 }
 
 
