@@ -1,594 +1,1277 @@
 //  Project Identifier: 40FB54C86566B9DDEAB902CC80E8CE85C1C62AAD
 
 #include <vector>
-#include <algorithm>
-#include <getopt.h>
-#include <iostream>
 #include <string>
 #include "hunt.h"
-#include "xcode_redirect.hpp"
+#include <algorithm>
 #include <deque>
+#include <getopt.h>
+#include <iostream>
+
 using namespace std;
- 
-// ----------------------------------------------------------------------------
-//                       Quarter Master Declarations
-// ----------------------------------------------------------------------------
 
 class Game {
     
 public:
-    
-    // Members
-    // Optimization Tip: Make sure to order from biggest size to smallest
-    // 2-D Vector
-    vector<vector<position>> Map;
-    
-    // DEFAULT
-    string Captian_method = "STACK";
-    string Firstmate_method = "QUEUE";
-    string Order = "NESW";
-    char type;
+
+    vector<vector<position>> map;
+
+
+    bool verbose=false;
+    bool stats=false;
+    bool path=false;
+
+    string pathdir;
     string path_type;
-    unsigned int n;
-    int land_traveled = 0;
-    int water_traveled = 0;
-    int ashore = 0;
-    bool verbose = false;
-    bool stats = false;
-    bool path = false;
+
+    int num;
+
+    int landlength=0;
+    int waterlength=0;
+    int landed=0;
+
+    char maplist;
+
+    string captainstore="STACK";
+    string firstmatestore="QUEUE";
+    string order="NESW";
+
+    Location initial;
+    Location finish;
+
+
     
-    Location start;
-    Location end;
-    
-    // Read in the .txt treasure file through stdin.
     void read_data();
 
-    // Read and process command line arguments.
     void get_options(int argc, char** argv);
     
-    // Print Stats
-    //void print_stats();
-    
-    // Print Path
-    //void print_path(string path_value);
-    
+    void print_stats();
+
+    void print_path(const string path_value);
+
 };
 
-// ----------------------------------------------------------------------------
-//                          Members Declarations
-// ----------------------------------------------------------------------------
 
 struct Members {
     
 public:
     
-    string hunt_strat;
-    string SorQ;
-    deque<Location> investigate;
-    Location CapCurrent;
-    Location FirCurrent;
+    string huntingorder;
+    string stackorqueue;
+    deque<Location> pile;
+    Location here;
     
-    Members(string hunt_idea, string storing) {
-        hunt_strat = hunt_idea;
-        SorQ = storing;
+    Members(string huntorder, string filing) {
+        huntingorder=huntorder;
+        stackorqueue=filing;
     }
     
-    void search(bool &found, int &travel, Members firstmate, Game ship);
+    void search(bool &found, Location temp, vector<vector<position>> &mapforfir,  int size, int &travel);
     
 };
 
 
-// ----------------------------------------------------------------------------
-//                               Driver
-// ----------------------------------------------------------------------------
-
-int main(int argc, char * argv[]) {
-    
-    // Xcode Redirect Speed up - I/O Stream
-    ios_base::sync_with_stdio(false);
-    xcode_redirect(argc, argv);
-    
-    // Ship is the person who will know everything and be able to provide you information
-    Game ship;
-    
-    ship.get_options(argc, argv);
-    ship.read_data();
-    
-    // Create the Members
-    Members captain(ship.Order, ship.Captian_method);
-    Members firstmate(ship.Order, ship.Firstmate_method);
-    
-    bool treasure_found = false;
-    
-    // Captain "STACK" or "QUEUE"
-    switch (captain.SorQ[0]) {
-        // STACK
-        case 'S': {
-            // Adding "START LOCATION" to 'investigate' deque
-            captain.investigate.push_front(ship.start);
-            ship.water_traveled = ship.water_traveled + 1;
+void Members::search(bool &found, Location temp, vector<vector<position>> &mapforfir,  int size, int &travel) {
+    switch (stackorqueue[0]) {
+        case 'Q': {
+            pile.push_back(temp);
             
-            // Verbose "Treasure hunt started at: ..."
-            if (ship.verbose)
-                cout << "Treasure hunt started at: " << ship.start.row << ship.start.col << "/n";
+            //increment the counter for distance moved
+            travel=travel + 1;
             
-            while(!captain.investigate.empty() || !treasure_found) {
+            
+            while(!pile.empty() || (found == false)) {
                 
-                // Set CapCurrent location to top of stack
-                captain.CapCurrent = captain.investigate.front();
+                here=pile.front();
+                travel=travel+ 1;
+                pile.pop_front();
                 
-                // Check to see if it has not been discovered
-                if (!ship.Map[captain.CapCurrent.row][captain.CapCurrent.col].discovered) {
-                    ship.Map[captain.CapCurrent.row][captain.CapCurrent.col].discovered = true;
-                    ship.water_traveled = ship.water_traveled + 1;
-                }
-                
-                // Removing from sail container
-                captain.investigate.pop_front();
-                
-                // Loop through Hunt Order
-                for(string::size_type i = 0; i < captain.hunt_strat.size(); ++i) {
+                for(int i=0; i < 4; i++) {
                     
                     // North
-                    if (captain.hunt_strat[i] == 'N') {
+                    if (huntingorder[i]=='N') {
                         
-                        // 'out of bounds'
-                        if (captain.CapCurrent.row == 0)
+                        // invalid due to out of bounds
+                        if (here.r==0)
                             continue;
                         
-                        // '.'
-                        if (ship.Map[captain.CapCurrent.row - 1][captain.CapCurrent.col].symbol == '.') {
-                            if (!ship.Map[captain.CapCurrent.row - 1][captain.CapCurrent.col].discovered) {
-                                
-                                // Set previous
-                                if (captain.CapCurrent.row - 1 != ship.start.row || captain.CapCurrent.col != ship.start.col)
-                                        ship.Map[captain.CapCurrent.row - 1][captain.CapCurrent.col].prev = 'N';
-                                
-                                Location temp;
-                                temp.row = captain.CapCurrent.row - 1;
-                                temp.col = captain.CapCurrent.col;
-                                captain.investigate.push_front(temp);
-                            }
+                        // found water
+                        if (mapforfir[here.r-1][here.c].symbol=='.')
+                            continue;
+                        
+                        // found land
+                        if (mapforfir[here.r-1][here.c].symbol=='o' && !mapforfir[here.r-1][here.c].investigated) {                             
+                            // mark it as discovered
+                            mapforfir[here.r-1][here.c].investigated=true;
+                            mapforfir[here.r-1][here.c].prev='N';
+                            
+                            Location temp;
+                            temp.r=here.r-1;
+                            temp.c=here.c;
+                            pile.push_back(temp);
                         }
                         
-                        // 'o' || '$'
-                        if (ship.Map[captain.CapCurrent.row - 1][captain.CapCurrent.col].symbol == 'o' ||
-                            ship.Map[captain.CapCurrent.row - 1][captain.CapCurrent.col].symbol == '$') {
-                            if (ship.Map[captain.CapCurrent.row - 1][captain.CapCurrent.col].discovered == false) {
-                                
-                                // Went ashore
-                                ship.ashore = ship.ashore++;
-                                
-                                // Verbose "Went ashore at: ..."
-                                if (ship.verbose) {
-                                    cout << "Went ashore at: " << captain.CapCurrent.row - 1 << "," << captain.CapCurrent.col << "/n";
-                                    cout << "Searching island... ";
-                                }
-                                Location temp;
-                                temp.row = captain.CapCurrent.row - 1;
-                                temp.col = captain.CapCurrent.col;
-                                captain.investigate.push_front(temp);
-                                
-                                // Run first mate --- set previous in the search function
-                                firstmate.search(treasure_found,ship.land_traveled, firstmate, ship);
+                        // Found treasure!
+                        if (mapforfir[here.r-1][here.c].symbol=='$') {
+                            // mark it as discovered
+                            mapforfir[here.r-1][here.c].investigated=true;
+                            mapforfir[here.r-1][here.c].prev='N';
+                            found=true;
+                            Location temp;
+                            temp.r=here.r-1;
+                            temp.c=here.c;
+                            pile.push_back(temp);
+                            
+                            break;
+                        }
+                        
+                        // blockage
+                        if (mapforfir[here.r-1][here.c].symbol=='#' && !mapforfir[here.r-1][here.c].investigated){
+                            // mark it as discovered
+                            mapforfir[here.r-1][here.c].investigated=true;
+                            continue;
+                        }
+                    }
 
-                                
-                                // Check for treasure
-                                if (treasure_found)
-                                    break;
-                                
-                                // Verbose "party..."
-                                if (ship.verbose) {
-                                    if (treasure_found)
-                                        cout << "party found treasure at " << ship.end.row << ship.end.col << ".\n";
-                                    else
-                                        cout << "party returned with no treasure.\n";
-                                }
-                            }
+                    // South
+                    if (huntingorder[i]=='S') {
+                        
+                        // invalid due to out of bounds
+                        if (here.r==size-1)
+                            continue;
+                        
+                        // found water
+                        if (mapforfir[here.r+1][here.c].symbol=='.')
+                            continue;
+                        
+                        // found land
+                        if (mapforfir[here.r+1][here.c].symbol=='o' && !mapforfir[here.r+1][here.c].investigated) {                        
+                            // mark it as discovered
+                            mapforfir[here.r+1][here.c].investigated=true;
+                            mapforfir[here.r+1][here.c].prev='S';
+                            
+                            Location temp;
+                            temp.r=here.r+ 1;
+                            temp.c=here.c;
+                            pile.push_back(temp);
                         }
                         
-                        // '#'
-                        if (ship.Map[captain.CapCurrent.row - 1][captain.CapCurrent.col].symbol == '#') {
+                        // Found treasure!
+                        if (mapforfir[here.r+1][here.c].symbol=='$') {
+                            // mark it as discovered
+                            mapforfir[here.r+1][here.c].investigated=true;
+                            mapforfir[here.r+1][here.c].prev='S';
+                            found=true;
+                            Location temp;
+                            temp.r=here.r+ 1;
+                            temp.c=here.c;
+                            pile.push_back(temp);
+                            
+                            break;
+                        }
+                        
+                        // blockage
+                        if (mapforfir[here.r+1][here.c].symbol=='#' && !mapforfir[here.r+1][here.c].investigated) {
+                            // mark it as discovered
+                            mapforfir[here.r+1][here.c].investigated=true;
                             continue;
                         }
                     }
                     
                     // East
-                    if (captain.hunt_strat[i] == 'E') {
+                    if (huntingorder[i]=='E') {
                         
-                        // 'out of bounds'
-                        if (captain.CapCurrent.col == (ship.n - 1))
+                        // invalid due to out of bounds
+                        if (here.r==size-1)
                             continue;
                         
-                        // '.'
-                        if (ship.Map[captain.CapCurrent.row][captain.CapCurrent.col + 1].symbol == '.') {
-                            if (!ship.Map[captain.CapCurrent.row][captain.CapCurrent.col + 1].discovered) {
-                                
-                                // Set previous
-                                if (captain.CapCurrent.row != ship.start.row || captain.CapCurrent.col + 1 != ship.start.col)
-                                        ship.Map[captain.CapCurrent.row][captain.CapCurrent.col + 1].prev = 'E';
-                                
-                                Location temp;
-                                temp.row = captain.CapCurrent.row;
-                                temp.col = captain.CapCurrent.col + 1;
-                                captain.investigate.push_front(temp);
-                            }
-                        }
-                        
-                        // 'o' || '$'
-                        if (ship.Map[captain.CapCurrent.row][captain.CapCurrent.col + 1].symbol == 'o' ||
-                            ship.Map[captain.CapCurrent.row][captain.CapCurrent.col + 1].symbol == '$') {
-                            if (!ship.Map[captain.CapCurrent.row][captain.CapCurrent.col + 1].discovered) {
-                                
-                                // Went ashore
-                                ship.ashore = ship.ashore + 1;
-                                
-                                // Verbose "Went ashore at: ..."
-                                if (ship.verbose) {
-                                    cout << "Went ashore at: " << captain.CapCurrent.row << "," << captain.CapCurrent.col + 1 << "/n";
-                                    cout << "Searching island... ";
-                                }
-                                
-                                // Run first mate --- set previous in the search function
-                                firstmate.search(treasure_found,ship.land_traveled, firstmate, ship);
-                                
-                                // Check for treasure
-                                if (treasure_found)
-                                    break;
-                                
-                                // Verbose "party..."
-                                if (ship.verbose) {
-                                    if (treasure_found)
-                                        cout << "party found treasure at " << ship.end.row << ship.end.col << ".\n";
-                                    else
-                                        cout << "party returned with no treasure.\n";
-                                }
-                            }
-                        }
-                        
-                        // '#'
-                        if (ship.Map[captain.CapCurrent.row][captain.CapCurrent.col + 1].symbol == '#') {
+                        // found water
+                        if (mapforfir[here.r][here.c+1].symbol=='.')
                             continue;
+                        
+                        // found land
+                        if (mapforfir[here.r][here.c+1].symbol=='o' && !mapforfir[here.r][here.c+1].investigated) {
+                            // mark it as discovered
+                            mapforfir[here.r][here.c+1].investigated=true;
+                            mapforfir[here.r][here.c+1].prev='E';
+                            
+                            Location temp;
+                            temp.r=here.r;
+                            temp.c=here.c+ 1;
+                            pile.push_back(temp);  
+                        }
+                        
+                        // Found treasure!
+                        if (mapforfir[here.r][here.c+1].symbol=='$') {
+                            // mark it as discovered
+                            mapforfir[here.r][here.c+1].investigated=true;
+                            
+                            
+                            mapforfir[here.r][here.c+1].prev='E';
+                            found=true;
+                            Location temp;
+                            temp.r=here.r;
+                            temp.c=here.c+ 1;
+                            pile.push_back(temp);
+                            
+                            break;
+                        }
+                        
+                        // blockage
+                        if (mapforfir[here.r][here.c+1].symbol=='#' && !mapforfir[here.r][here.c+1].investigated) {
+                            // mark it as discovered
+                            mapforfir[here.r][here.c+1].investigated=true;
+                            continue;                       
                         }
                     }
                     
-                    // South
-                    if (captain.hunt_strat[i] == 'S') {
-                        
-                        // 'out of bounds'
-                        if (captain.CapCurrent.row == (ship.n - 1))
-                            continue;
-                        
-                        // '.'
-                        if (ship.Map[captain.CapCurrent.row + 1][captain.CapCurrent.col].symbol == '.') {
-                            if (!ship.Map[captain.CapCurrent.row + 1][captain.CapCurrent.col].discovered) {
-                                
-                                // Set previous
-                                if (captain.CapCurrent.row + 1 != ship.start.row || captain.CapCurrent.col != ship.start.col)
-                                        ship.Map[captain.CapCurrent.row + 1][captain.CapCurrent.col].prev = 'S';
-                                
-                                Location temp;
-                                temp.row = captain.CapCurrent.row + 1;
-                                temp.col = captain.CapCurrent.col;
-                                captain.investigate.push_front(temp);
-                            }
-                        }
-                        
-                        // 'o' || '$'
-                        if (ship.Map[captain.CapCurrent.row + 1][captain.CapCurrent.col].symbol == 'o' ||
-                            ship.Map[captain.CapCurrent.row + 1][captain.CapCurrent.col].symbol == '$') {
-                            if (!ship.Map[captain.CapCurrent.row + 1][captain.CapCurrent.col].discovered) {
-                                
-                                // Went ashore
-                                ship.ashore = ship.ashore + 1;
-                                
-                                // Verbose "Went ashore at: ..."
-                                if (ship.verbose) {
-                                    cout << "Went ashore at: " << captain.CapCurrent.row + 1 << "," << captain.CapCurrent.col << "/n";
-                                    cout << "Searching island... ";
-                                }
-                                
-                                // Run first mate --- set previous in the search function
-                                firstmate.search(treasure_found,ship.land_traveled, firstmate, ship);
-                                
-                                // Check for treasure
-                                if (treasure_found)
-                                    break;
-                                
-                                // Verbose "party..."
-                                if (ship.verbose) {
-                                    if (treasure_found)
-                                        cout << "party found treasure at " << ship.end.row << ship.end.col << ".\n";
-                                    else
-                                        cout << "party returned with no treasure.\n";
-                                }
-                            }
-                        }
-                        
-                        // '#'
-                        if (ship.Map[captain.CapCurrent.row + 1][captain.CapCurrent.col].symbol == '#') {
-                            continue;
-                        }
-                    }
+                    
                     
                     // West
-                    if (captain.hunt_strat[i] == 'W') {
+                    if (huntingorder[i]=='W') {
                         
-                        // 'out of bounds'
-                        if (captain.CapCurrent.col == 0)
+                        // invalid due to out of bounds
+                        if (here.r==0)
                             continue;
                         
-                        // '.'
-                        if (ship.Map[captain.CapCurrent.row][captain.CapCurrent.col - 1].symbol == '.') {
-                            if (!ship.Map[captain.CapCurrent.row][captain.CapCurrent.col - 1].discovered) {
-                                
-                                // Set previous
-                                if (captain.CapCurrent.row != ship.start.row || captain.CapCurrent.col - 1 != ship.start.col)
-                                        ship.Map[captain.CapCurrent.row][captain.CapCurrent.col - 1].prev = 'W';
-                                
-                                Location temp;
-                                temp.row = captain.CapCurrent.row;
-                                temp.col = captain.CapCurrent.col - 1;
-                                captain.investigate.push_front(temp);
-                            }
+                        // found water
+                        if (mapforfir[here.r][here.c-1].symbol=='.')
+                            continue;
+                        
+                        // found land
+                        if (mapforfir[here.r][here.c-1].symbol=='o' && !mapforfir[here.r][here.c-1].investigated) {      
+                            // mark it as discovered
+                            mapforfir[here.r][here.c-1].investigated=true;
+                            mapforfir[here.r][here.c-1].prev='W';
+                            
+                            Location temp;
+                            temp.r=here.r;
+                            temp.c=here.c-1;
+                            pile.push_back(temp);
                         }
                         
-                        // 'o' || '$'
-                        if (ship.Map[captain.CapCurrent.row][captain.CapCurrent.col - 1].symbol == 'o' ||
-                            ship.Map[captain.CapCurrent.row][captain.CapCurrent.col - 1].symbol == '$') {
-                            if (!ship.Map[captain.CapCurrent.row][captain.CapCurrent.col - 1].discovered) {
-                                
-                                // Went ashore
-                                ship.ashore = ship.ashore + 1;
-                                
-                                // Verbose "Went ashore at: ..."
-                                if (ship.verbose) {
-                                    cout << "Went ashore at: " << captain.CapCurrent.row << "," << captain.CapCurrent.col - 1 << "/n";
-                                    cout << "Searching island... ";
-                                }
-                                
-                                // Run first mate --- set previous in the search function
-                                firstmate.search(treasure_found,ship.land_traveled, firstmate, ship);
-                                
-                                // Check for treasure
-                                if (treasure_found)
-                                    break;
-                                
-                                // Verbose "party..."
-                                if (ship.verbose) {
-                                    if (treasure_found)
-                                        cout << "party found treasure at " << ship.end.row << ship.end.col << ".\n";
-                                    else
-                                        cout << "party returned with no treasure.\n";
-                                }
-                            }
+                        // Found treasure!
+                        if (mapforfir[here.r][here.c-1].symbol=='$') {
+                            // mark it as discovered
+                            mapforfir[here.r][here.c-1].investigated=true;
+                            mapforfir[here.r][here.c-1].prev='W';
+                            found=true;
+                            Location temp;
+                            temp.r=here.r;
+                            temp.c=here.c-1;
+                            pile.push_back(temp);
+                            
+                            break;
                         }
                         
-                        // '#'
-                        if (ship.Map[captain.CapCurrent.row][captain.CapCurrent.col - 1].symbol == '#') {
+                        // blockage
+                        if (mapforfir[here.r][here.c-1].symbol=='#' && !mapforfir[here.r][here.c-1].investigated) {
+                            // mark it as discovered
+                            mapforfir[here.r][here.c-1].investigated=true;
                             continue;
                         }
                     }
                 }
+            }
+        }
+        
+        case 'S': {
+            pile.push_front(temp);
+            travel=travel+ 1;
+            
+            while(!pile.empty() || !found) {
                 
-                // Output
-                //if (ship.stats)
-                    //ship.print_stats();
-                //if (ship.path)
-                    //ship.print_path(ship.path_type);
+                here=pile.front();
                 
-                // Will need a path length later when doing "backtracing" have to find path back no matter what
-                if (treasure_found)
-                    cout << "Treasure found at " << ship.end.row <<","<< ship.end.col << " with path length " << 7 << ".\n";
+                // increment the travel for water
+                travel=travel+ 1;
+                
+                // delete the front of stack
+                pile.pop_front();
+                
+                for(int i=0; i < 4; i++) {
+                    
+                    // North
+                    if (huntingorder[i]=='N') {
+                        // invalid due to out of bounds
+                        if (here.r==0)
+                            continue;
+                        // found water
+                        if (mapforfir[here.r-1][here.c].symbol=='.')
+                            continue;
+                        // found land
+                        if (mapforfir[here.r-1][here.c].symbol=='o' && !mapforfir[here.r-1][here.c].investigated) {
+                            // mark it as discovered
+                            mapforfir[here.r-1][here.c].investigated=true;
+                            mapforfir[here.r-1][here.c].prev='N';
+                            Location temp;
+                            temp.r=here.r-1;
+                            temp.c=here.c;
+                            pile.push_front(temp);
+                        }
+                        
+                        // Found treasure!
+                        if (mapforfir[here.r-1][here.c].symbol=='$') {
+                            // mark it as discovered
+                            mapforfir[here.r-1][here.c].investigated=true;
+                            mapforfir[here.r-1][here.c].prev='N';
+                            found=true;
+                            Location temp;
+                            temp.r=here.r-1;
+                            temp.c=here.c;
+                            pile.push_front(temp);
+                            break;
+                        }
+                        
+                        // blockage
+                        if (mapforfir[here.r-1][here.c].symbol=='#' && !mapforfir[here.r-1][here.c].investigated) {
+                            // mark it as discovered
+                            mapforfir[here.r-1][here.c].investigated=true;
+                            continue;
+                        }
+                    }
+
+                    // South
+                    if (huntingorder[i]=='S') {
+                        
+                        // invalid due to out of bounds
+                        if (here.r==size-1)
+                            continue;
+                        
+                        // found water
+                        if (mapforfir[here.r+1][here.c].symbol=='.')
+                            continue;
+                        
+                        // found land
+                        if (mapforfir[here.r+1][here.c].symbol=='o' && !mapforfir[here.r+1][here.c].investigated) {
+                            // mark it as discovered
+                            mapforfir[here.r+1][here.c].investigated=true;   
+                            mapforfir[here.r+1][here.c].prev='S';   
+                            Location temp;
+                            temp.r=here.r+ 1;
+                            temp.c=here.c;
+                            pile.push_front(temp);
+                        }
+                        
+                        // Found treasure!
+                        if (mapforfir[here.r+1][here.c].symbol=='$') {
+                            // mark it as discovered
+                            mapforfir[here.r+1][here.c].investigated=true;
+                            mapforfir[here.r+1][here.c].prev='S';
+                            found=true;
+                            Location temp;
+                            temp.r=here.r+ 1;
+                            temp.c=here.c;
+                            pile.push_front(temp);
+                            
+                            break;
+                        }
+                        
+                        // blockage
+                        if (mapforfir[here.r+1][here.c].symbol=='#' && !mapforfir[here.r+1][here.c].investigated) {
+                            // mark it as discovered
+                            mapforfir[here.r+1][here.c].investigated=true;
+                            continue;
+                        }
+                    }
+                    
+                    // East
+                    if (huntingorder[i]=='E') {
+                        
+                        // invalid due to out of bounds
+                        if (here.r==size-1)
+                            continue;
+                        
+                        // found water
+                        if (mapforfir[here.r][here.c+1].symbol=='.')
+                            continue;
+                        
+                        // found land
+                        if (mapforfir[here.r][here.c+1].symbol=='o' && !mapforfir[here.r][here.c+1].investigated) {      
+                            // mark it as discovered
+                            mapforfir[here.r][here.c+1].investigated=true;
+                            mapforfir[here.r][here.c+1].prev='E';
+                            Location temp;
+                            temp.r=here.r;
+                            temp.c=here.c+ 1;
+                            pile.push_front(temp);
+                        }
+                        
+                        // Found treasure!
+                        if (mapforfir[here.r][here.c+1].symbol=='$') {
+                            // mark it as discovered
+                            mapforfir[here.r][here.c+1].investigated=true;
+                            mapforfir[here.r][here.c+1].prev='E';  
+                            found=true;
+                            Location temp;
+                            temp.r=here.r;
+                            temp.c=here.c+ 1;
+                            pile.push_front(temp);
+                            
+                            break;
+                        }
+                        
+                        // blockage
+                        if (mapforfir[here.r][here.c+1].symbol=='#' && !mapforfir[here.r][here.c+1].investigated) {
+                            // mark it as discovered
+                            mapforfir[here.r][here.c+1].investigated=true;
+                            continue;
+                        }
+                    }
+                    
+                    
+                    
+                    // West
+                    if (huntingorder[i]=='W') {
+                        
+                        // invalid due to out of bounds
+                        if (here.r==0)
+                            continue;
+                        
+                        // found water
+                        if (mapforfir[here.r][here.c-1].symbol=='.')
+                            continue;
+                        
+                        // found land
+                        if (mapforfir[here.r][here.c-1].symbol=='o' && !mapforfir[here.r][here.c-1].investigated) {
+                            // mark it as discovered
+                            mapforfir[here.r][here.c-1].investigated=true;
+                            mapforfir[here.r][here.c-1].prev='W';
+                            Location temp;
+                            temp.r=here.r;
+                            temp.c=here.c-1;
+                            pile.push_front(temp);
+                        }
+                        
+                        // Found treasure!
+                        if (mapforfir[here.r][here.c-1].symbol=='$') {
+                            // mark it as discovered
+                            mapforfir[here.r][here.c-1].investigated=true;
+                            mapforfir[here.r][here.c-1].prev='W'; 
+                            found=true;
+                            Location temp;
+                            temp.r=here.r;
+                            temp.c=here.c-1;
+                            pile.push_front(temp);
+                            
+                            break;
+                        }
+                        
+                        // blockage
+                        if (mapforfir[here.r][here.c-1].symbol=='#' && !mapforfir[here.r][here.c-1].investigated) {
+                            // mark it as discovered
+                            mapforfir[here.r][here.c-1].investigated=true;
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+int main(int argc, char * argv[]) {
+    
+    Game game;
+    
+    game.get_options(argc, argv);
+    game.read_data();
+    
+    Members firstmate(game.order, game.firstmatestore);
+    Members captain(game.order, game.captainstore);
+    
+    
+    bool treasure=false;
+    
+    // Captain implementation
+    switch (captain.stackorqueue[0]) {
+        case 'S': {
+            // add initial posiotion
+            captain.pile.push_front(game.initial);
+            game.waterlength=game.waterlength+ 1;
+            
+            // initial is now discovered
+            game.map[game.initial.r][game.initial.c].investigated=true;
+            
+            // verbose that game has initialed
+            if (game.verbose)
+                cout<<"Treasure hunt initialed at: "<<game.initial.r<<","<<game.initial.c<<endl;
+            
+            while(!captain.pile.empty() || !treasure) {
+                captain.here=captain.pile.front();
+
+                game.waterlength=game.waterlength + 1;
+                
+                // delete first of the stack
+                captain.pile.pop_front();
+                
+                for(int i=0; i < 4; i = i +1) {
+                    if (captain.huntingorder[i]=='N') {
+                        
+                        // invalid due to out of bounds
+                        if (captain.here.r==0)
+                            continue;
+                        
+                        // found water
+                        if (game.map[captain.here.r-1][captain.here.c].symbol=='.' && !game.map[captain.here.r-1][captain.here.c].investigated) {    
+                            // mark it as discovered
+                            game.map[captain.here.r-1][captain.here.c].investigated=true;
+                            
+                            if (captain.here.r-1 != game.initial.r || captain.here.c != game.initial.c)
+                                    game.map[captain.here.r-1][captain.here.c].prev='N';
+                            
+                            Location temp;
+                            temp.r=captain.here.r-1;
+                            temp.c=captain.here.c;
+                            captain.pile.push_front(temp);
+                            
+                        }
+                        
+                        // found land or treasure
+                        if (game.map[captain.here.r-1][captain.here.c].symbol=='$' || game.map[captain.here.r-1][captain.here.c].symbol=='o') {
+                            if (!game.map[captain.here.r-1][captain.here.c].investigated) {
+                                
+                                // mark it as discovered
+                                game.map[captain.here.r-1][captain.here.c].investigated=true;
+                                
+                                // came to land
+                                game.landed=game.landed+ 1;
+                                
+                                if (game.verbose) {
+                                    cout<<"Went ashore at: "<<captain.here.r-1<<","<<captain.here.c<<endl;
+                                    cout<<"Searching island... ";
+                                }
+                                
+                                Location temp;
+                                temp.r=captain.here.r-1;
+                                temp.c=captain.here.c;
+                                
+                                firstmate.search(treasure, temp, game.map, game.num, game.landlength);
+                                
+                                if(treasure==true) {
+                                    if(game.verbose) {
+                                        cout<<"party found treasure at "<<game.finish.r<<","<<game.finish.c<<endl;
+                                        break;
+                                    }
+                                    break;
+                                }
+                                else {
+                                    if(game.verbose) {
+                                        cout<<"party returned with no treasure.\n";
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // case of blockage
+                        if (game.map[captain.here.r-1][captain.here.c].symbol=='#') {
+                            if (!game.map[captain.here.r-1][captain.here.c].investigated) {
+                                // mark it as discovered
+                                game.map[captain.here.r-1][captain.here.c].investigated=true;
+                                continue;
+                            }
+                        }
+                    }
+                    
+
+                    
+                    // South
+                    if (captain.huntingorder[i]=='S') {
+                        
+                        // invalid due to out of bounds
+                        if (captain.here.r==(game.num-1))
+                            continue;
+                        
+                        // found water
+                        if (game.map[captain.here.r+1][captain.here.c].symbol=='.' && !game.map[captain.here.r+1][captain.here.c].investigated) {    
+                            // mark it as discovered
+                            game.map[captain.here.r+1][captain.here.c].investigated=true;
+                            
+                            if (captain.here.r+1 != game.initial.r || captain.here.c != game.initial.c)
+                                    game.map[captain.here.r+1][captain.here.c].prev='S';
+                            
+                            Location temp;
+                            temp.r=captain.here.r+ 1;
+                            temp.c=captain.here.c;
+                            captain.pile.push_front(temp);
+                        }
+                        
+                        // found land or treasure
+                        if (game.map[captain.here.r+1][captain.here.c].symbol=='$' || game.map[captain.here.r+1][captain.here.c].symbol=='o') {
+                            if (!game.map[captain.here.r+1][captain.here.c].investigated) {
+                                
+                                // mark it as discovered
+                                game.map[captain.here.r+1][captain.here.c].investigated=true;
+                                
+                                // came to land
+                                game.landed=game.landed+ 1;
+                                
+                                if (game.verbose) {
+                                    cout<<"Went ashore at: "<<captain.here.r+1<<","<<captain.here.c<<endl;
+                                    cout<<"Searching island...";
+                                }
+                                
+                                Location temp;
+                                temp.r=captain.here.r+ 1;
+                                temp.c=captain.here.c;
+                                
+                                firstmate.search(treasure, temp, game.map, game.num, game.landlength);
+
+                                if(treasure) {
+                                    if(game.verbose) {
+                                        cout<<"party found treasure at "<<game.finish.r<<","<<game.finish.c<<endl;
+                                        break;
+                                    }
+                                    break;
+                                }
+                                else {
+                                    if(game.verbose) {
+                                        cout<<"party returned with no treasure.\n";
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // blocakge
+                        if (game.map[captain.here.r+1][captain.here.c].symbol=='#' && !game.map[captain.here.r+1][captain.here.c].investigated) {
+                            // mark it as discovered
+                            game.map[captain.here.r+1][captain.here.c].investigated=true;
+                            continue; 
+                        }
+                    }
+
+                    // East
+                    if (captain.huntingorder[i]=='E') {
+                        
+                        // invalid due to out of bounds
+                        if (captain.here.c==(game.num-1))
+                            continue;
+                        
+                        // found water
+                        if (game.map[captain.here.r][captain.here.c+1].symbol=='.') {
+                            if (!game.map[captain.here.r][captain.here.c+1].investigated) {
+                                
+                                // mark it as discovered
+                                game.map[captain.here.r][captain.here.c+1].investigated=true;
+
+                                if (captain.here.r != game.initial.r || captain.here.c+1 != game.initial.c)
+                                        game.map[captain.here.r][captain.here.c+1].prev='E';
+                                
+                                Location temp;
+                                temp.r=captain.here.r;
+                                temp.c=captain.here.c+ 1;
+                                captain.pile.push_front(temp);
+                            }
+                        }
+                        
+                        // found land or treasure
+                        if (game.map[captain.here.r][captain.here.c+1].symbol=='$' || game.map[captain.here.r][captain.here.c+1].symbol=='o') {
+                            if (!game.map[captain.here.r][captain.here.c+1].investigated) {
+                                game.map[captain.here.r][captain.here.c+1].investigated=true;
+
+                                game.landed=game.landed+ 1;
+                                
+
+                                if (game.verbose) {
+                                    cout<<"Went ashore at: "<<captain.here.r<<","<<captain.here.c+1<<endl;
+                                    cout<<"Searching island... ";
+                                }
+                                
+                                Location temp;
+                                temp.r=captain.here.r;
+                                temp.c=captain.here.c+ 1;
+                                
+
+                                firstmate.search(treasure, temp, game.map, game.num, game.landlength);
+                                
+
+                                if(treasure) {
+                                    if(game.verbose) {
+                                        cout<<"party found treasure at "<<game.finish.r<<","<<game.finish.c<<endl;
+                                        break;
+                                    }
+                                    break;
+                                }
+                                else {
+                                    if(game.verbose) {
+                                        cout<<"party returned with no treasure.\n";
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // blockage
+                        if (game.map[captain.here.r][captain.here.c+1].symbol=='#') {
+                            if (!game.map[captain.here.r][captain.here.c+1].investigated) {
+                                // mark it as discovered
+                                game.map[captain.here.r][captain.here.c+1].investigated=true;
+                                continue;
+                            }
+                        }
+                    } 
+
+                    // West
+                    if (captain.huntingorder[i]=='W') {
+                        
+                        // invalid due to out of bounds
+                        if (captain.here.c==0)
+                            continue;
+                        
+                        // found water
+                        if (game.map[captain.here.r][captain.here.c-1].symbol=='.') {
+                            if (!game.map[captain.here.r][captain.here.c-1].investigated) {
+                                
+                                // mark it as discovered
+                                game.map[captain.here.r][captain.here.c-1].investigated=true;
+
+                                if (captain.here.r != game.initial.r || captain.here.c-1 != game.initial.c)
+                                        game.map[captain.here.r][captain.here.c-1].prev='W';
+                                
+                                Location temp;
+                                temp.r=captain.here.r;
+                                temp.c=captain.here.c-1;
+                                captain.pile.push_front(temp);
+                            }
+                        }
+                        
+                        // found land or treasure
+                        if (game.map[captain.here.r][captain.here.c-1].symbol=='o' ||
+                            game.map[captain.here.r][captain.here.c-1].symbol=='$') {
+                            if (!game.map[captain.here.r][captain.here.c-1].investigated) {
+                                
+                                // mark it as discovered
+                                game.map[captain.here.r][captain.here.c-1].investigated=true;
+                                
+                                // came to land
+                                game.landed=game.landed+ 1;
+
+                                if (game.verbose) {
+                                    cout<<"Went landed at: "<<captain.here.r<<","<<captain.here.c-1<<endl;
+                                    cout<<"Searching island... ";
+                                }
+                                
+                                Location temp;
+                                temp.r=captain.here.r;
+                                temp.c=captain.here.c-1;
+
+                                firstmate.search(treasure, temp, game.map, game.num, game.landlength);
+
+                                if(treasure) {
+                                    if(game.verbose) {
+                                        cout<<"party found treasure at "<<game.finish.r<<","<<game.finish.c<<endl;
+                                        break;
+                                    }
+                                    break;
+                                }
+                                else {
+                                    if(game.verbose) {
+                                        cout<<"party returned with no treasure.\n";
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // blockage
+                        if (game.map[captain.here.r][captain.here.c-1].symbol=='#') {
+                            if(!game.map[captain.here.r][captain.here.c-1].investigated) {
+                                // mark it as discovered
+                                game.map[captain.here.r][captain.here.c-1].investigated=true;
+                                continue;
+                            }
+                        }
+                    }
+                }
+                
+                
+                if (game.path)
+                    game.print_path(game.path_type);
+
+                if (game.stats)
+                    game.print_stats();
+
+                
+                if (treasure==true)
+                    cout<<"Treasure found at "<<game.finish.r <<","<< game.finish.c<<" with path length "<<game.pathdir.size()<<endl;
                 else
-                    cout << "No treasure found after investigating " << ship.ashore << "locations.\n";
+                    cout<<"No treasure found after investigating "<<game.landed<<"locations.\n";
             }
             
         }
         
-        // QUEUE
         case 'Q': {
+            captain.pile.push_back(game.initial);
+            game.waterlength=game.waterlength+ 1;
+            
+            // initialed the intial queue location
+            game.map[game.initial.r][game.initial.c].investigated=true;
+            
+            if (game.verbose)
+                cout<<"Treasure hunt initialed at: "<<game.initial.r<<game.initial.c<<endl;
+            
+            while(!captain.pile.empty() || !treasure) {
+                
+                captain.here=captain.pile.front();
+                
+                game.waterlength=game.waterlength+ 1;
+                
+                // delete the first queue
+                captain.pile.pop_front();
+                
+                for(int i = 0; i < 4; i = i +1) {
+                    
+                    // North
+                    if (captain.huntingorder[i]=='N') {
+                        
+                        // invalid due to out of bounds
+                        if (captain.here.r==0)
+                            continue;
+                        
+                        // found water
+                        if (game.map[captain.here.r-1][captain.here.c].symbol=='.' && !game.map[captain.here.r-1][captain.here.c].investigated) {
+                                
+                            // mark it as discovered
+                            game.map[captain.here.r-1][captain.here.c].investigated=true;
+                            
+                            if (captain.here.r-1 != game.initial.r || captain.here.c != game.initial.c)
+                                game.map[captain.here.r-1][captain.here.c].prev='N';
+                            
+                            Location temp;
+                            temp.r=captain.here.r-1;
+                            temp.c=captain.here.c;
+                            captain.pile.push_back(temp);   
+                        }
+                        
+                        // found land or treasure
+                        if (game.map[captain.here.r-1][captain.here.c].symbol=='$' || game.map[captain.here.r-1][captain.here.c].symbol=='o') {
+                            if (game.map[captain.here.r-1][captain.here.c].investigated == false) {
+                                
+                                // mark it as discovered
+                                game.map[captain.here.r-1][captain.here.c].investigated=true;
+                                
+                                //came to land
+                                game.landed=game.landed+ 1;
+
+                                if(game.verbose) {
+                                    cout<<"Went ashore at: "<<captain.here.r-1<<","<<captain.here.c<<endl;
+                                    
+                                    cout<<"Searching island... ";
+                                }
+                                
+                                Location temp;
+                                temp.r=captain.here.r-1;
+                                temp.c=captain.here.c;
+
+                                firstmate.search(treasure, temp, game.map, game.num, game.landlength);
+                                if(treasure) {
+                                    if(game.verbose) {
+                                        cout<<"party found treasure at "<<game.finish.r<<","<<game.finish.c<<endl;
+                                        break;
+                                    }
+                                    break;
+                                }
+                                else {
+                                    if(game.verbose) {
+                                        cout<<"party returned with no treasure.\n";
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // blocakge
+                        if (game.map[captain.here.r-1][captain.here.c].symbol=='#' && !game.map[captain.here.r-1][captain.here.c].investigated) {
+                            // mark it as discovered
+                            game.map[captain.here.r-1][captain.here.c].investigated=true;
+                            continue;
+                        }
+                    }
+
+                    // South
+                    if (captain.huntingorder[i]=='S') {
+                        
+                        // invalid due to out of bounds
+                        if (captain.here.r==(game.num-1))
+                            continue;
+                        
+                        // found water
+                        if (game.map[captain.here.r+1][captain.here.c].symbol=='.' && !game.map[captain.here.r+1][captain.here.c].investigated) {
+                            
+                            // mark it as discovered
+                            game.map[captain.here.r+1][captain.here.c].investigated=true;
+                            if (captain.here.r+1 != game.initial.r || captain.here.c != game.initial.c)
+                                game.map[captain.here.r+1][captain.here.c].prev='S';
+                            
+                            Location temp;
+                            temp.r=captain.here.r+ 1;
+                            temp.c=captain.here.c;
+                            captain.pile.push_back(temp);
+                        }
+                        
+                        // found land or treasure
+                        if (game.map[captain.here.r+1][captain.here.c].symbol=='o' || game.map[captain.here.r+1][captain.here.c].symbol=='$') {
+                            if (game.map[captain.here.r+1][captain.here.c].investigated == false) {
+                                
+                                // mark it as discovered
+                                game.map[captain.here.r+1][captain.here.c].investigated=true;
+                                
+                                // came to land
+                                game.landed=game.landed+ 1;
+
+                                if(game.verbose) {
+                                    cout<<"Went ashore at: "<<captain.here.r+1<<","<<captain.here.c<<endl;
+                                    
+                                    cout<<"Searching island... ";
+                                }
+                                
+                                Location temp;
+                                temp.r=captain.here.r+ 1;
+                                temp.c=captain.here.c;
+
+                                firstmate.search(treasure, temp, game.map, game.num, game.landlength);
+
+                                if(treasure) {
+                                    if(game.verbose) {
+                                        cout<<"party found treasure at "<<game.finish.r<<","<<game.finish.c<<endl;
+                                        break;
+                                    }
+                                    break;
+                                }
+                                else {
+                                    if(game.verbose) {
+                                        cout<<"party returned with no treasure.\n";
+                                    }
+                                }
+                            }
+                        }
+
+                        if (game.map[captain.here.r+1][captain.here.c].symbol=='#') {
+                            if(!game.map[captain.here.r+1][captain.here.c].investigated) {
+                                // mark it as discovered
+                                game.map[captain.here.r+1][captain.here.c].investigated=true;
+                                continue;
+                            }
+                        }
+                    }
+                    
+                    // East
+                    if (captain.huntingorder[i]=='E') {
+                        
+                        // invalid due to out of bounds
+                        if (captain.here.r==(game.num-1))
+                            continue;
+                        
+                        // found water
+                        if (game.map[captain.here.r][captain.here.c+1].symbol=='.' && !game.map[captain.here.r][captain.here.c+1].investigated) {
+                               
+                            // mark it as discovered
+                            game.map[captain.here.r][captain.here.c+1].investigated=true;
+
+                            if (captain.here.r != game.initial.r || captain.here.c+1 != game.initial.c)
+                                game.map[captain.here.r][captain.here.c+1].prev='E';
+                            
+                            Location temp;
+                            temp.r=captain.here.r;
+                            temp.c=captain.here.c+ 1;
+                            captain.pile.push_back(temp);
+                                
+        
+                        }
+                        
+                        // found land or treasure
+                        if (game.map[captain.here.r][captain.here.c+1].symbol=='$' || game.map[captain.here.r][captain.here.c+1].symbol=='o') {
+                            if (game.map[captain.here.r][captain.here.c+1].investigated == false) {
+                                
+                                // mark it as discovered
+                                game.map[captain.here.r][captain.here.c+1].investigated=true;
+                                
+                                // came to land
+                                game.landed=game.landed+ 1;
+
+                                if(game.verbose) {
+                                    cout<<"Went ashore at: "<<captain.here.r<<","<<captain.here.c+1<<endl;
+                                    
+                                    cout<<"Searching island... ";
+                                }
+                                
+                                Location temp;
+                                temp.r=captain.here.r;
+                                temp.c=captain.here.c+ 1;
+                                firstmate.search(treasure, temp, game.map, game.num, game.landlength);
+                                if(treasure) {
+                                    if(game.verbose) {
+                                        cout<<"party found treasure at "<<game.finish.r<<","<<game.finish.c<<endl;
+                                        break;
+                                    }
+                                    break;
+                                }
+                                else {
+                                    if(game.verbose) {
+                                        cout<<"party returned with no treasure.\n";
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // blockage
+                        if (game.map[captain.here.r][captain.here.c+1].symbol=='#' && !game.map[captain.here.r][captain.here.c+1].investigated) {
+                            // mark it as discovered
+                            game.map[captain.here.r][captain.here.c+1].investigated=true;
+                            continue;
+                        }
+                    }
+                    
+                    
+                    
+                    // West
+                    if (captain.huntingorder[i]=='W') {
+                        
+                        // invalid due to out of bounds
+                        if (captain.here.r==0)
+                            continue;
+                        
+                        // found water
+                        if (game.map[captain.here.r][captain.here.c-1].symbol=='.' && !game.map[captain.here.r][captain.here.c-1].investigated) {
+                            // mark it as discoverd
+                            game.map[captain.here.r][captain.here.c-1].investigated=true;
+
+                            if (captain.here.r != game.initial.r || captain.here.c-1 != game.initial.c)
+                                game.map[captain.here.r][captain.here.c-1].prev='W';
+                            
+                            Location temp;
+                            temp.r=captain.here.r;
+                            temp.c=captain.here.c-1;
+                            captain.pile.push_back(temp);
+                        }
+                        
+                        // found land or treasure
+                        if (game.map[captain.here.r][captain.here.c-1].symbol=='$' || game.map[captain.here.r][captain.here.c-1].symbol=='o') {
+                            if (!game.map[captain.here.r][captain.here.c-1].investigated) {
+                                
+                                // mark it as discovered
+                                game.map[captain.here.r][captain.here.c-1].investigated=true;
+                                
+                                // came to land
+                                game.landed=game.landed+ 1;
+
+                                if(game.verbose) {
+                                    cout<<"Went ashore at: "<<captain.here.r<<","<<captain.here.c-1<<endl;
+                                    
+                                    cout<<"Searching island... ";
+                                }
+                                
+                                Location temp;
+                                temp.r=captain.here.r;
+                                temp.c=captain.here.c-1;
+
+                                firstmate.search(treasure, temp, game.map, game.num, game.landlength);
+
+                                if(treasure) {
+                                    if(game.verbose) {
+                                        cout<<"party found treasure at "<<game.finish.r<<","<<game.finish.c<<endl;
+                                        break;
+                                    }
+                                    break;
+                                }
+                                else {
+                                    if(game.verbose) {
+                                        cout<<"party returned with no treasure.\n";
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // blockage
+                        if (game.map[captain.here.r][captain.here.c-1].symbol=='#' && !game.map[captain.here.r][captain.here.c-1].investigated) {
+                            // mark it as discovered
+                            game.map[captain.here.r][captain.here.c-1].investigated=true;
+                            continue;
+                        }
+                    }
+                }
+
+                //print out the pathing when treasure is found
+                if (treasure)
+                    cout<<"Treasure found at "<<game.finish.r <<","<< game.finish.c<<" with path length "<<game.pathdir.size()<<endl;
+                else
+                    cout<<"No treasure found after investigating "<<game.landed<<"locations.\n";
+                
+                if (game.stats)
+                    game.print_stats();
+                if (game.path)
+                    game.print_path(game.path_type);    
+            }
             
         }
     }
     
-    // insert code here...(Whole process of will be here)
     return 0;
 }
 
+void Game::read_data() {
+    char first_input;
+    cin>>first_input;
+    // keep on reading till its not #
+    while(first_input=='#') {
+        cin>>first_input;
+    }
+    maplist=first_input;
+    
+    cin>>num;
+    position dummy;
+    map.resize(num,vector<position>(num, dummy));
+    
+    if(maplist=='M') {
+        for(int i=0; i < num; i++) {
+            for(int j=0; j < num; j++) {
+                cin>>first_input;
+                //skip the water
+                if(first_input=='.')
+                    continue;
+                map[i][j].symbol=first_input;
+                if (first_input=='@') {
+                    initial.c=j;
+                    initial.r=i;
+                }
+                if (first_input=='$') {
+                    finish.c=j;
+                    finish.r=i;
+                }
+            }
+        }
+    }
 
-// ----------------------------------------------------------------------------
-//                      Quarter Master Definitions
-// ----------------------------------------------------------------------------
-
-/*
-    This program can be run with five different command line options:
- 
-    [--help | -h]
-        Print a useful help message and exit, ignores all other options
- 
-    [--captain | -c] <"QUEUE"|"STACK">
-        The route-finding container used while sailing in the water
-        (if unspecified, container default is stack)
- 
-    [--firstmate| -f] <"QUEUE"|"STACK">
-        The route-finding container used while searching on land
-        (if unspecified, container default is queue)
- 
-    [--hunt-order | -o] <ORDER>
-        The order of discovery of adjacent tiles around the CapCurrent location,
-        a four character string using exactly one of each of the four characters 'N', 'E', 'S', and 'W'
-        (if unspecified, the default order is: North->East->South->West)
- 
-    [--verbose | -v]
-        Print verbose output while searching
- 
-    [--stats | -s]
-        Display statistics after the search is complete
- 
-    [--show-path | -p] <M|L>
-        Display a treasure map or the list of locations that describe the path
- 
- */
+    if(maplist=='L') {
+        char symbol;
+        int r;
+        int c;
+        while(cin>>r>>c>>symbol) {
+            map[r][c].symbol=symbol;
+            if (symbol=='@') {
+                initial.c=c;
+                initial.r=r;
+            }
+            if (symbol=='$') {
+                finish.c=c;
+                finish.r=r;
+            }
+        }
+    }   
+}
 
 void Game::get_options(int argc, char** argv) {
-    int option_index = 0, option = 0;
-    
-    // Don't display getopt error messages about options
-    opterr = false;
-    
-    // Checking path flag
-    bool path_used = false;
 
-    // use getopt to find command line options
-    struct option longOpts[] = {{ "help", no_argument, nullptr, 'h'},
+    bool path_used=false;
+    
+    int option_index=0, option=0;
+    
+    opterr=false;
+    
+    
+
+    struct option longOpts[]={
                                 { "captain", required_argument, nullptr, 'c'},
                                 { "firstmate", required_argument, nullptr, 'f'},
                                 { "hunt-order", required_argument, nullptr, 'o'},
+                                { "show-path", required_argument, nullptr, 'p'},
+                                { "help", no_argument, nullptr, 'h'},
                                 { "verbose", no_argument, nullptr, 'v'},
                                 { "stats", no_argument, nullptr, 's'},
-                                { "show-path", required_argument, nullptr, 'p'},
                                 { nullptr, 0, nullptr, '\0' }};
     
-    while ((option = getopt_long(argc, argv, "hc:f:o:vsp:", longOpts, &option_index)) != -1) {
-        // Checking for show-path more than once
+    while ((option=getopt_long(argc, argv, "c:f:o:p:hvs", longOpts, &option_index)) != -1) {
+
+        if (option=='p')
+            path_used=true;                                                                             
+
         if (path_used) {
-            cerr << "Specify --show-path only once" << endl;
+            cerr<<"Specify --show-path only once"<<endl;
             exit(1);
         }
             
-        if (option == 'p')
-            path_used = true;
         
         switch (option) {
-            // Help
-            case 'h': {
-                cout      <<  "This program reads a txt file in the format of a 2-D Ascii Map or a Coordinate/Terrain Triples \n"
-                          <<  "Both files will contain the following structures: \n"
-                          <<  "\t 1. Zero or more lines of comments, each of which...\n\t ~ have an octothorpe (#) in column zero \n"
-                          <<                                                              "\t ~ can contain any combination of zero or more printable                                                                    ascii characters \n"
-                          <<                                                              "\t ~ end with a newline character \n"
-                          <<  "\n"
-                          <<  "\t 2. A filetype specifier, which is...\n\t ~ a single ASCII character \n"
-                          <<                                               "\t ~ either M or L (for map or list files) \n"
-                          <<                                               "\t ~ followed by a newline character \n"
-                          <<  "\n"
-                          <<  "\t 3. A map size value, which is...\n\t ~ a positive integer, >= 2 \n"
-                          <<                                          "\t ~ both the width and the height of the map \n"
-                          <<                                          "\t ~ followed by a newline character \n"
-                          <<  "The starting location is always a water square, and the treasure location is always a land square. \n"
-                          <<  "Usage: \'./hunt\n\t[--captain | -c] <Which container 'STACK' or 'QUEUE'>\n"
-                          <<                      "\t[--firtmate | -f] <Which container 'STACK' or 'QUEUE'>\n"
-                          <<                      "\t[--hunt-order | -o] <Which order do you want to discover: 'N', 'E', 'S', 'W' (must have each one                                              EXACTLY once)>\n"
-                          <<                      "\t[--verbose | -v]\n"
-                          <<                      "\t[--stats | -s]\n"
-                          <<                      "\t[--show-path | -p] <How do you want to see the path of treasure as a map or line: 'M' or 'L'>\n"
-                          <<                      "\t[--help | -h]\n"
-                          <<                      "\t< <2D Ascii Map.txt or CTT.txt>\' \n";
-                exit(0);
-            }
-            
-            // Captain
-            /*
-            Conditionals:
-                - the argument provided must be either "QUEUE" or "STACK"
-            */
             case 'c': {
-                string captain_input = optarg;
-                if (captain_input == "QUEUE" || captain_input == "STACK")
-                    Captian_method = captain_input;
+                string captain_input=optarg;
+                if (captain_input=="QUEUE" || captain_input=="STACK")
+                    captainstore=captain_input;
                 else {
-                    cerr << "Invalid argument to --captain" << endl;
+                    cerr<<"Invalid argument to --captain"<<endl;
                     exit(1);
                 }
                 break;
             }
-            
-            // First Mate
-            /*
-            Conditionals:
-                - the argument provided must be either "QUEUE" or "STACK"
-            */
+
             case 'f': {
-                string firstmate_input = optarg;
-                if (firstmate_input == "QUEUE" || firstmate_input == "STACK")
-                    Firstmate_method = firstmate_input;
+                string firstmate_input=optarg;
+                if (firstmate_input=="STACK" || firstmate_input=="QUEUE")
+                    firstmatestore=firstmate_input;
                 else {
-                    cerr << "Invalid argument to --first-mate" << endl;
+                    cerr<<"Invalid argument to --first-mate"<<endl;
                     exit(1);
                 }
                 break;
             }
             
-            // Hunt Order
-            /*
-            Conditionals:
-                - the argument provided must be four characters long
-                - the argument provided must contain one and only one of each of "NESW" (in any order)
-            */
+
             case 'o': {
-                // Make sure that its correct in input otherwise stderr and exit(1)
-                string Order_input = optarg;
-                if (Order_input.size() == 4) {
-                    for (string::size_type i = 0; i < Order_input.size(); ++i) {
-                        if (Order_input[i] == 'N'
-                            || Order_input[i] == 'W'
-                            || Order_input[i] == 'E'
-                            || Order_input[i] == 'S') {
-                            if (i == 3) {
-                                Order = Order_input;
+                string order_input=optarg;
+                if (order_input.size()==4) {
+                    for (int i = 0; i < 4; i++) {
+                        if (order_input[i]=='N' || order_input[i]=='S' || order_input[i]=='W'|| order_input[i]=='E') {
+                            if (i==3) {
+                                order=order_input;
                             }
                         }
                         else {
-                            cerr << "Invalid argument to --hunt-order" << endl;
+                            cerr<<"Invalid argument to --hunt-order"<<endl;
                             exit(1);
                         }
                     }
                 }
                 else {
-                    cerr << "Invalid argument to --hunt-order" << endl;
+                    cerr<<"Invalid argument to --hunt-order"<<endl;
                     exit(1);
                 }
                 break;
             }
-            
-            // Verbose
-            case 'v': {
-                verbose = true;
-                break;
-            }
-            
-            // Stats
-            case 's': {
-                stats = true;
-                break;
-            }
-                
-            // Show Path
-            /*
-            Conditionals:
-                - the argument provided must be 'M' or 'L'
-                - The Show Path option can only be specified once (Check in the beginning of get_options())
-            */
+
             case 'p': {
-                string path_input = optarg;
-                if (path_input == "M" || path_input == "L"){
-                    path = true;
-                    path_type = path_input;
+                string path_input=optarg;
+                if (path_input=="L" || path_input=="M"){
+                    path_type=path_input;                    
+                    path=true;
                 }
                 else{
-                    cerr << "Invalid argument to --show-path" << endl;
+                    cerr<<"Invalid argument to --show-path"<<endl;
                     exit(1);
                 }
                 break;
             }
+
+            case 'h': {
+                cout     << "The Program reads a list or map file in order to find the most efficient path to the treasure \n"
+                         << "The captain will raom around water looking for land and once land is found the firstmate will go on an expedition to find treasure on the island \n"
+                         << "Enter in captain or firstmate with the stack or queue method \n"
+                         << "Enter hunt order to specify in which direction the members of the game need to search the treasure\n'"
+                         << "Enter verbose to see the latest update of the expedition \n"
+                         << "Enter stats to see the full analysis of the expedition \n"
+                         << "Finally enter show-path to see the pathing to the treasure \n"
+                         << "\n";
+                exit(0);
+            }
+
+            case 's': {
+                stats=true;
+                break;
+            }
             
-            /*
-            CONDITION: All short or long options not in the spec should result in program
-                termination with a non-zero exit code
-            */
+            case 'v': {
+                verbose=true;
+                break;
+            }
+           
             default:
-                cerr << "Unknown option" << endl;
+                cerr<<"Unknown option"<<endl;
                 exit(1);
     
         }
@@ -596,197 +1279,18 @@ void Game::get_options(int argc, char** argv) {
     
 }
 
-// Reading in the Map or List .txt
-void Game::read_data() {
-    // Skipping Comments
-    char first_char;
-    
-    cin >> first_char;
-    while(first_char == '#') {
-        cin.ignore(numeric_limits<streamsize>::max(), '\n');
-        cin >> first_char;
-    }
-    
-    // Read in Format Type
-    type = first_char;
-    
-    // Getting Size
-    cin >> n;
-    position d;
-    // Populating with neccessary memory
-    Map.resize(n,vector<position>(n, d));
-    
-    if(type == 'L') {
-        unsigned int row;
-        unsigned int col;
-        char symbol;
-        // Read in for L type
-        while(cin >> row >> col >> symbol) {
-            if (symbol == '@') {
-                start.col = col;
-                start.row = row;
-            }
-            
-            if (symbol == '$') {
-                end.col = col;
-                end.row = row;
-            }
-            Map[row][col].symbol = symbol;
-        }
-    }
-    
-    // Reading in for M type
-    if(type == 'M') {
-        // Read in in Line Format
-        for(unsigned int i = 0; i < n; ++i) {
-            for(unsigned int j = 0; j < n; ++j) {
-                cin >> first_char;
-                if(first_char == '.')
-                    continue;
-                Map[i][j].symbol = first_char;
-                if (first_char == '@') {
-                    start.col = j;
-                    start.row = i;
-                }
-                
-                if (first_char == '$') {
-                    end.col = j;
-                    end.row = i;
-                }
-            }
-        }
-    }
+void Game::print_path(const string path) {
+    string pathing = path;
 }
 
-void Members::search(bool &found, int &travel, Members firstmate, Game ship){
-    while(!firstmate.investigate.empty() || !found) {
-                    
-        // Set CapCurrent location to top of stack
-        firstmate.FirCurrent = firstmate.investigate.front();
-        
-        // Check to see if it has not been discovered
-        if (!ship.Map[firstmate.FirCurrent.row][firstmate.FirCurrent.col].discovered) {
-            ship.Map[firstmate.FirCurrent.row][firstmate.FirCurrent.col].discovered = true;
-            ship.water_traveled = ship.water_traveled + 1;
-        }
-        // Removing from sail container
-        firstmate.investigate.pop_front();
 
-        for(string::size_type i = 0; i < firstmate.hunt_strat.size(); ++i) {
-                    
-                    // North
-                    if (firstmate.hunt_strat[i] == 'N') {
-                        
-                        // 'out of bounds'
-                        if (firstmate.FirCurrent.row == 0)
-                            continue;
-                        
-                        // '.'
-                        if (ship.Map[firstmate.FirCurrent.row - 1][firstmate.FirCurrent.col].symbol == 'o') {
-                            if (!ship.Map[firstmate.FirCurrent.row - 1][firstmate.FirCurrent.col].discovered) {
-                                
-                                // Set previous
-                                if (firstmate.CapCurrent.row - 1 != ship.start.row || firstmate.FirCurrent.col != ship.start.col)
-                                        ship.Map[firstmate.CapCurrent.row - 1][firstmate.FirCurrent.col].prev = 'N';
-                                
-                                Location temp;
-                                temp.row = firstmate.FirCurrent.row - 1;
-                                temp.col = firstmate.FirCurrent.col;
-                                firstmate.investigate.push_front(temp);
-                            }
-                        }
-                    }
-
-                    if (ship.Map[firstmate.FirCurrent.row - 1][firstmate.FirCurrent.col].symbol == '$'){
-                        found = true;
-                        break;
-                    }
-
-                    //East
-                    if (firstmate.hunt_strat[i] == 'E') {
-                        
-                        // 'out of bounds'
-                        if (firstmate.FirCurrent.row == 0)
-                            continue;
-                        
-                        // '.'
-                        if (ship.Map[firstmate.FirCurrent.row][firstmate.FirCurrent.col + 1].symbol == 'o') {
-                            if (!ship.Map[firstmate.FirCurrent.row][firstmate.FirCurrent.col + 1].discovered) {
-                                
-                                // Set previous
-                                if (firstmate.CapCurrent.row != ship.start.row || firstmate.FirCurrent.col + 1 != ship.start.col)
-                                        ship.Map[firstmate.CapCurrent.row][firstmate.FirCurrent.col + 1].prev = 'E';
-                                
-                                Location temp;
-                                temp.row = firstmate.FirCurrent.row;
-                                temp.col = firstmate.FirCurrent.col + 1;
-                                firstmate.investigate.push_front(temp);
-                            }
-                        }
-                    }
-
-                    if (ship.Map[firstmate.FirCurrent.row][firstmate.FirCurrent.col + 1].symbol == '$'){
-                        found = true;
-                        break;
-                    }
-
-                    //South
-                    if (firstmate.hunt_strat[i] == 'S') {
-                        
-                        // 'out of bounds'
-                        if (firstmate.FirCurrent.row == 0)
-                            continue;
-                        
-                        // '.'
-                        if (ship.Map[firstmate.FirCurrent.row + 1][firstmate.FirCurrent.col].symbol == 'o') {
-                            if (!ship.Map[firstmate.FirCurrent.row - 1][firstmate.FirCurrent.col].discovered) {
-                                
-                                // Set previous
-                                if (firstmate.CapCurrent.row + 1 != ship.start.row || firstmate.FirCurrent.col != ship.start.col)
-                                        ship.Map[firstmate.CapCurrent.row + 1][firstmate.FirCurrent.col].prev = 'S';
-                                
-                                Location temp;
-                                temp.row = firstmate.FirCurrent.row + 1;
-                                temp.col = firstmate.FirCurrent.col;
-                                firstmate.investigate.push_front(temp);
-                            }
-                        }
-                    }
-
-                    if (ship.Map[firstmate.FirCurrent.row + 1][firstmate.FirCurrent.col].symbol == '$'){
-                        found = true;
-                        break;
-                    }
-
-                    //West
-                    if (firstmate.hunt_strat[i] == 'W') {
-                        
-                        // 'out of bounds'
-                        if (firstmate.FirCurrent.row == 0)
-                            continue;
-                        
-                        // '.'
-                        if (ship.Map[firstmate.FirCurrent.row][firstmate.FirCurrent.col - 1].symbol == 'o') {
-                            if (!ship.Map[firstmate.FirCurrent.row][firstmate.FirCurrent.col - 1].discovered) {
-                                
-                                // Set previous
-                                if (firstmate.CapCurrent.row != ship.start.row || firstmate.FirCurrent.col - 1 != ship.start.col)
-                                        ship.Map[firstmate.CapCurrent.row][firstmate.FirCurrent.col - 1].prev = 'W';
-                                
-                                Location temp;
-                                temp.row = firstmate.FirCurrent.row;
-                                temp.col = firstmate.FirCurrent.col - 1;
-                                firstmate.investigate.push_front(temp);
-                            }
-                        }
-                    }
-
-                    if (ship.Map[firstmate.FirCurrent.row][firstmate.FirCurrent.col - 1].symbol == '$'){
-                        found = true;
-                        break;
-                    }
-                    
-        }
-
-    }
+void Game::print_stats() {
+    
+    cout<<"--- STATS ---\n";
+    cout<<"initialing location: "<<initial.r<<","<<initial.c<<endl;
+    cout<<"Water locations investigated: "<<waterlength<<endl;
+    cout<<"Land locations investigated: "<<landlength<<endl;
+    cout<<"Went landed: "<<landed<<endl;
+    cout<<"Path length: "<<pathdir.size()<<endl;
+    cout<<"--- STATS ---"<<endl;
 }

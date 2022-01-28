@@ -2,13 +2,14 @@
 
 // Represents a single coordinate.
 struct position {
-    bool discovered = false;
-    char prev;
+    bool investigated = false;
     char symbol = '.';
+    char prev;
+    
 };
 
 
 struct Location {
-    unsigned int row, col;
+    unsigned int r, c;
 };
 
