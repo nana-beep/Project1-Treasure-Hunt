@@ -10,6 +10,6 @@ struct position {
 
 
 struct Location {
-    unsigned int r, c;
+    int r, c;
 };
 

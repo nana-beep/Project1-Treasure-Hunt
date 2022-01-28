@@ -47,7 +47,7 @@ public:
     
     void print_stats();
 
-    void print_path(const string path_value);
+    void print_path(string path_value);
 
 };
 
@@ -1176,7 +1176,8 @@ void Game::get_options(int argc, char** argv) {
                                 { "help", no_argument, nullptr, 'h'},
                                 { "verbose", no_argument, nullptr, 'v'},
                                 { "stats", no_argument, nullptr, 's'},
-                                { nullptr, 0, nullptr, '\0' }};
+                                { nullptr, 0, nullptr, '\0' }
+                            };
     
     while ((option=getopt_long(argc, argv, "c:f:o:p:hvs", longOpts, &option_index)) != -1) {
 
@@ -1279,8 +1280,9 @@ void Game::get_options(int argc, char** argv) {
     
 }
 
-void Game::print_path(const string path) {
-    string pathing = path;
+void Game::print_path(string path) {
+    //unsure how to print the path
+    //cout << path << endl;
 }
 
 

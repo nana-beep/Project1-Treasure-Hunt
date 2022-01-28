@@ -59,7 +59,8 @@ extern "C" {
 #define __GETOPT_LONG_H__
 
 #ifdef __cplusplus
-extern "C" {
+extern "C" 
+{
 #endif
 
     struct option		/* specification for a long form option...	*/
